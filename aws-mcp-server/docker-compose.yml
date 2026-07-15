@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  aws-mcp-server:
+    build: .
+    container_name: aws-mcp-server
+    ports:
+      - "8085:8085"
+    environment:
+      - AWS_REGION=us-east-1
+    restart: unless-stopped

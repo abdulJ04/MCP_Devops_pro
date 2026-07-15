@@ -1,0 +1,38 @@
+{
+  "name": "devops-ai-agents",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:all": "cd aws-mcp-server && python3 server.py & sleep 3 && next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "setup": "pip3 install -r aws-mcp-server/requirements.txt && npm install"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "autoprefixer": "^10.4.15",
+    "framer-motion": "^10.16.4",
+    "next": "^15.5.20",
+    "postcss": "^8.4.31",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.0.1",
+    "recharts": "^3.9.2",
+    "tailwindcss": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.2",
+    "@types/react": "^18.2.24",
+    "@types/react-dom": "^18.2.8",
+    "eslint": "^8.50.0",
+    "eslint-config-next": "^15.5.20",
+    "typescript": "^5.2.2"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.10"
+    }
+  }
+}

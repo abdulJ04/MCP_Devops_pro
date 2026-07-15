@@ -1,0 +1,47 @@
+[
+  {
+    "EmpID": "1001",
+    "Name": "Rahul Sharma",
+    "Dept": "Engineering",
+    "Role": "Senior Dev",
+    "Salary": 85000,
+    "Location": "Bangalore",
+    "JoinDate": "2021-03-15"
+  },
+  {
+    "EmpID": "1002",
+    "Name": "Priya Patel",
+    "Dept": "DevOps",
+    "Role": "Lead",
+    "Salary": 92000,
+    "Location": "Mumbai",
+    "JoinDate": "2020-07-22"
+  },
+  {
+    "EmpID": "1003",
+    "Name": "Amit Kumar",
+    "Dept": "Security",
+    "Role": "Analyst",
+    "Salary": 78000,
+    "Location": "Delhi",
+    "JoinDate": "2022-01-10"
+  },
+  {
+    "EmpID": "1004",
+    "Name": "Sneha Reddy",
+    "Dept": "Engineering",
+    "Role": "Junior Dev",
+    "Salary": 65000,
+    "Location": "Hyderabad",
+    "JoinDate": "2023-06-01"
+  },
+  {
+    "EmpID": "1005",
+    "Name": "Vikram Singh",
+    "Dept": "DevOps",
+    "Role": "Architect",
+    "Salary": 110000,
+    "Location": "Pune",
+    "JoinDate": "2019-11-05"
+  }
+]
