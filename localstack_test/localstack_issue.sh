@@ -17,11 +17,7 @@ sleep 3
 docker rm -f localstack-main 2>/dev/null
 
 # Start LocalStack fresh
-docker run -d \
-  --name localstack-main \
-  -p 4566:4566 \
-  -p 4510-4559:4510-4559 \
-  localstack/localstack
+localstack start
 
 # Wait for LocalStack to start
 echo "[INFO] Waiting for LocalStack to start..."
