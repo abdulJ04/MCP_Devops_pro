@@ -975,8 +975,8 @@ function VPCTab({ vpcs, securityGroups }: { vpcs: VPC[]; securityGroups: Securit
         <StatCard icon={BsActivity} label="Total Available IPs" value={vpcs.reduce((s, v) => s + v.subnets.reduce((ss, sn) => ss + sn.availableIps, 0), 0)} color="cyan" />
       </div>
       <div className="space-y-4">
-        {vpcs.map((vpc) => (
-          <Card key={vpc.name} className="overflow-hidden">
+        {vpcs.map((vpc, vpcIdx) => (
+          <Card key={`${vpc.name}-${vpcIdx}`} className="overflow-hidden">
             <div className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors" onClick={() => setExpandedVpc(expandedVpc === vpc.name ? null : vpc.name)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -998,8 +998,8 @@ function VPCTab({ vpcs, securityGroups }: { vpcs: VPC[]; securityGroups: Securit
                       <th className="pb-2 pr-4">Name</th><th className="pb-2 pr-4">CIDR</th><th className="pb-2 pr-4">AZ</th><th className="pb-2">Available IPs</th>
                     </tr></thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {vpc.subnets.map((sn) => (
-                        <tr key={sn.name}>
+                      {vpc.subnets.map((sn, snIdx) => (
+                        <tr key={`${sn.name}-${snIdx}`}>
                           <td className="py-2 pr-4 text-gray-900 dark:text-white">{sn.name}</td>
                           <td className="py-2 pr-4 font-mono text-xs text-gray-600 dark:text-gray-400">{sn.cidr}</td>
                           <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">{sn.az}</td>
@@ -1017,8 +1017,8 @@ function VPCTab({ vpcs, securityGroups }: { vpcs: VPC[]; securityGroups: Securit
       <Card className="p-5">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Security Groups</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {securityGroups.map((sg) => (
-            <div key={sg.name} className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+          {securityGroups.map((sg, idx) => (
+            <div key={`${sg.name}-${idx}`} className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
               <div className="flex items-center gap-2 mb-2">
                 <BsShieldCheck className="text-purple-500" />
                 <span className="font-medium text-gray-900 dark:text-white">{sg.name}</span>
