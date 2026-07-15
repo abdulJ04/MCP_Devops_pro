@@ -110,6 +110,11 @@ sudo usermod -aG docker $USER
 ```
 
 ### Step 2: Start LocalStack
+- Once you try to test localstack into local goto MCP_Devops_pro/localstack_test
+- Next run setup-enterprise-demo.sh
+- If any issue run cleanup-demo.sh && localstack_issue.sh
+- or follow below instruction.
+
 ```bash
 docker run -d --name localstack-main -p 4566:4566 localstack/localstack
 ```
