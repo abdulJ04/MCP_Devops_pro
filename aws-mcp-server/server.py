@@ -103,6 +103,18 @@ async def set_timeout(request: dict = {}):
     return {"success": True, "timeout": SESSION_TIMEOUT}
 
 
+@app.post("/disconnect")
+async def disconnect():
+    """Clear credentials and session — called when dashboard disconnects."""
+    global _credentials, _sessions, _session_created_at
+    _credentials.clear()
+    _sessions.clear()
+    _cache.clear()
+    _session_created_at = 0
+    logger.info("Dashboard disconnected — credentials cleared")
+    return {"success": True, "message": "Disconnected. MCP server will require re-authentication."}
+
+
 def _cached(key: str, ttl: int):
     entry = _cache.get(key)
     if entry and time.time() - entry["ts"] < ttl:
@@ -152,7 +164,7 @@ class AuthRequest(BaseModel):
 
 @app.post("/auth")
 async def auth(req: AuthRequest):
-    global _credentials, _sessions
+    global _credentials, _sessions, _session_created_at
 
     if req.use_localstack:
         _credentials = {
@@ -163,6 +175,7 @@ async def auth(req: AuthRequest):
             "endpoint_url": req.endpoint_url or "http://localhost:4566",
         }
         _sessions.clear()
+        _session_created_at = time.time()
         try:
             sts = _get_client("sts")
             identity = sts.get_caller_identity()
@@ -215,6 +228,21 @@ async def auth(req: AuthRequest):
 @app.get("/health")
 async def health():
     return {"status": "ok", "credentials_configured": bool(_credentials), "localstack": _credentials.get("use_localstack", False)}
+
+
+@app.get("/sync-credentials")
+async def sync_credentials():
+    """Return current credentials for MCP server to sync with dashboard."""
+    connected = bool(_credentials.get("aws_access_key") or _credentials.get("use_localstack"))
+    return {
+        "connected": connected,
+        "use_localstack": _credentials.get("use_localstack", False),
+        "aws_access_key": _credentials.get("aws_access_key", ""),
+        "aws_secret_key": _credentials.get("aws_secret_key", ""),
+        "aws_region": _credentials.get("aws_region", "us-east-1"),
+        "endpoint_url": _credentials.get("endpoint_url", ""),
+        "aws_session_token": _credentials.get("aws_session_token", ""),
+    }
 
 
 # ============================================================

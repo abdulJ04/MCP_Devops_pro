@@ -218,14 +218,14 @@ The Python backend runs on `http://localhost:8085` with these endpoints:
 Devops-AI-Agents/
 ├── app/
 │   ├── api/v1/aws/          # Next.js API routes (proxy to Python backend)
-│   │   ├── route.ts         # Main AWS endpoint
-│   │   └── [action]/route.ts # Dynamic action handler
+│   │   └── route.ts         # Main AWS endpoint
 │   ├── aws-dashboard/       # AWS Dashboard page
 │   │   └── page.tsx         # Main dashboard component
 │   └── page.tsx             # Home page
 ├── aws-mcp-server/
 │   ├── server.py            # Python FastAPI + boto3 backend
 │   └── requirements.txt     # Python dependencies
+├── claude-mcp-server.py     # MCP Server for Claude Desktop integration
 ├── components/
 │   └── Sidebar.tsx          # Main app sidebar
 ├── start.sh                 # One-click startup script
@@ -324,10 +324,147 @@ npm run lint
 
 ---
 
+## Claude Desktop MCP Integration
+
+Connect this DevOps platform to Claude Desktop as an MCP (Model Context Protocol) server. This lets Claude query your AWS infrastructure directly using natural language.
+
+### Architecture
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Claude Desktop  │────▶│  MCP Server       │────▶│  Python Backend  │
+│  (AI Assistant)  │     │  (claude-mcp-     │     │  (server:8085)   │
+│                  │     │   server.py)      │     │                  │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                               │                         │
+                               ▼                         ▼
+                        ┌──────────────┐         ┌──────────────┐
+                        │  LocalStack   │         │  Real AWS    │
+                        │  (port 4566)  │         │  Account     │
+                        └──────────────┘         └──────────────┘
+```
+
+### How It Works
+1. **Dashboard Login** → Credentials stored in Python backend (memory)
+2. **MCP Server** → Auto-syncs credentials from backend via `/sync-credentials`
+3. **Claude Desktop** → Calls MCP tools → MCP server queries AWS via boto3
+4. **Dashboard Disconnect** → Backend clears credentials → MCP detects disconnection → Claude tools return "Not connected" message
+
+### Step 1: Install Python Dependencies
+```bash
+pip3 install fastmcp boto3 botocore
+```
+
+### Step 2: Configure Claude Desktop
+
+Edit `~/.config/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "aws-devops-tools": {
+      "command": "python3",
+      "args": [
+        "/path/to/MCP_Devops_pro/claude-mcp-server.py"
+      ],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "test",
+        "AWS_SECRET_ACCESS_KEY": "test",
+        "AWS_DEFAULT_REGION": "us-east-1"
+      }
+    }
+  }
+}
+```
+
+### Step 3: Restart Claude Desktop
+Close and reopen Claude Desktop to load the MCP server.
+
+### Step 4: Login to Dashboard
+1. Open `http://localhost:3000/aws-dashboard`
+2. Toggle LocalStack ON (for testing) or OFF (for real AWS)
+3. Click **Connect**
+4. Credentials auto-sync to MCP server
+
+### Step 5: Use in Claude Desktop
+Ask Claude questions like:
+- "List all EC2 instances"
+- "Show me S3 buckets"
+- "What Lambda functions are deployed?"
+- "Run a security audit"
+- "Show VPC and security groups"
+
+### Available MCP Tools (25+)
+
+| Tool | Description |
+|------|-------------|
+| `list_ec2_instances` | List all EC2 instances with status, type, IP |
+| `get_ec2_instance_status` | Get detailed instance status + CPU metrics |
+| `stop_ec2_instance` | Stop a running EC2 instance |
+| `start_ec2_instance` | Start a stopped EC2 instance |
+| `list_s3_buckets` | List all S3 buckets with object counts |
+| `list_s3_objects` | List objects in a specific bucket |
+| `list_lambda_functions` | List all Lambda functions |
+| `invoke_lambda_function` | Invoke a Lambda function |
+| `list_dynamodb_tables` | List DynamoDB tables with status |
+| `query_dynamodb_table` | Scan a DynamoDB table |
+| `list_sqs_queues` | List SQS queues with message counts |
+| `list_iam_users` | List IAM users with MFA status |
+| `list_vpcs` | List VPCs with subnets and CIDR blocks |
+| `list_security_groups` | List security groups with rules |
+| `list_secrets` | List Secrets Manager secrets |
+| `list_sns_topics` | List SNS topics |
+| `list_rds_instances` | List RDS databases |
+| `list_ecs_clusters` | List ECS clusters |
+| `list_cloudwatch_alarms` | List CloudWatch alarms |
+| `get_cost_overview` | Get AWS cost overview |
+| `security_audit` | Run security audit across services |
+| `sync_dashboard_credentials` | Re-sync credentials from dashboard |
+| `get_connection_status` | Check current connection status |
+| `configure_localstack` | Switch to LocalStack mode |
+| `configure_aws` | Switch to real AWS mode |
+
+### Credential Sync Flow
+```
+Dashboard Login → POST /auth → Backend stores credentials
+                              ↓
+MCP Server → GET /sync-credentials → Gets credentials from backend
+                              ↓
+Claude Desktop → Calls MCP tool → MCP server uses credentials → Returns result
+
+Dashboard Disconnect → POST /disconnect → Backend clears credentials
+                              ↓
+MCP Server → GET /sync-credentials → connected: false
+                              ↓
+Claude Desktop → Calls MCP tool → Returns "Not connected" error
+```
+
+### Troubleshooting MCP
+
+**MCP server not loading in Claude Desktop:**
+```bash
+# Test the MCP server directly
+python3 /path/to/claude-mcp-server.py
+
+# Check syntax
+python3 -c "import ast; ast.parse(open('claude-mcp-server.py').read()); print('OK')"
+```
+
+**Claude says "Not connected":**
+1. Open dashboard at `http://localhost:3000/aws-dashboard`
+2. Login with credentials
+3. MCP auto-syncs — try again in Claude
+
+**Permission prompts in Claude Desktop:**
+- Click the dropdown next to "Always allow" → Select "Always allow" for each tool
+- Or go to Settings → Connectors → aws-devops-tools → Enable auto-approve
+
+---
+
 ## Tech Stack
 
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, Recharts
 - **Backend**: Python 3.10+, FastAPI, boto3, FastMCP
+- **MCP Server**: FastMCP, boto3 (Claude Desktop integration)
 - **Infrastructure**: Docker, LocalStack (optional)
 
 ---

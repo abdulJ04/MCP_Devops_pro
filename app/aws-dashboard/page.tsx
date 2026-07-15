@@ -1755,7 +1755,14 @@ export default function AWSDashboardPage() {
     fetchAWS("set_timeout", { timeout: creds.sessionTimeout || 3600 });
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
+    try {
+      await fetch("/api/v1/aws", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disconnect" }),
+      });
+    } catch { /* best effort */ }
     setConnected(false);
     setCredentials(null);
     setActiveTab("overview");

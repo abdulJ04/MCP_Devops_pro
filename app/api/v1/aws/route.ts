@@ -42,6 +42,7 @@ const VALID_ACTIONS = [
   'budgets',
   'refresh',
   'set_timeout',
+  'disconnect',
 ] as const;
 
 const CORS_HEADERS = {
