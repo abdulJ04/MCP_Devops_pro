@@ -83,10 +83,8 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
 
     # If explicitly told to use LocalStack, keep LocalStack mode
     if use_localstack is True:
-        if not _credentials.get("use_localstack"):
-            logger.info("Switching to LocalStack mode")
-            _sessions.clear()
-            _cache.clear()
+        if not _credentials.get("use_localstack") or "default" not in _sessions:
+            logger.info("Setting up LocalStack mode")
             _credentials = {
                 "aws_access_key": access_key or "test",
                 "aws_secret_key": secret_key or "test",
@@ -94,6 +92,7 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
                 "endpoint_url": "http://localhost:4566",
                 "use_localstack": True,
             }
+            _sessions.clear()
         return
 
     # If live credentials provided, switch to live mode
@@ -126,6 +125,8 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
 async def refresh_cache():
     """Clear cache so next requests fetch fresh data from AWS."""
     _cache.clear()
+    # Also clear sessions so they get recreated with current credentials
+    _sessions.clear()
     return {"success": True, "message": "Cache cleared"}
 
 
