@@ -87,15 +87,21 @@ export default function Home() {
         <div className="relative overflow-hidden mb-16 rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-blue-700 shadow-xl">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 left-0 w-full h-full">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {[
+                { w: 180, h: 200, top: 10, left: 5, opacity: 0.15 },
+                { w: 250, h: 340, top: 34, left: 39, opacity: 0.11 },
+                { w: 85, h: 340, top: 66, left: 16, opacity: 0.46 },
+                { w: 140, h: 140, top: 35, left: 63, opacity: 0.42 },
+                { w: 60, h: 120, top: 52, left: 61, opacity: 0.40 },
+              ].map((s, i) => (
                 <div key={i} 
                   className="absolute rounded-full bg-white/20" 
                   style={{ 
-                    width: `${Math.random() * 300 + 50}px`, 
-                    height: `${Math.random() * 300 + 50}px`,
-                    top: `${Math.random() * 100}%`,
-                    left: `${Math.random() * 100}%`,
-                    opacity: Math.random() * 0.5
+                    width: `${s.w}px`, 
+                    height: `${s.h}px`,
+                    top: `${s.top}%`,
+                    left: `${s.left}%`,
+                    opacity: s.opacity
                   }}
                 ></div>
               ))}
