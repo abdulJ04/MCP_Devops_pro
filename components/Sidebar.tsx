@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { BsGear, BsCloud, BsCodeSquare, BsShieldCheck, 
          BsDiagram3, BsGraphUp, BsSpeedometer, BsBug, 
          BsHouseDoor, BsList, BsX, BsLightbulb, BsRobot, BsPeople, BsAmazon } from 'react-icons/bs';
@@ -23,10 +23,15 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [navigating, setNavigating] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+  
+  // Reset navigating when path changes
+  useEffect(() => { setNavigating(null); }, [pathname]);
 
   return (
     <>
@@ -76,14 +81,19 @@ export default function Sidebar() {
               <li key={item.path}>
                 <Link
                   href={item.path}
-                  onClick={() => setIsOpen(false)}
+                  prefetch={true}
+                  onClick={() => { setIsOpen(false); setNavigating(item.path); }}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                     pathname === item.path
                       ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-medium'
                       : 'text-[#6c757d] dark:text-[#a0a0aa] hover:bg-[#e9ecef] dark:hover:bg-[#353842] hover:text-[#212529] dark:hover:text-[#e8e8ed]'
                   }`}
                 >
-                  <span className={pathname === item.path ? 'text-indigo-600 dark:text-indigo-400' : 'text-[#adb5bd] dark:text-[#6a6a75]'}>{item.icon}</span>
+                  <span className={pathname === item.path ? 'text-indigo-600 dark:text-indigo-400' : 'text-[#adb5bd] dark:text-[#6a6a75]'}>
+                    {navigating === item.path ? (
+                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : item.icon}
+                  </span>
                   <span>{item.name}</span>
                 </Link>
               </li>

@@ -1,11 +1,14 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { FeatureCard } from '@/components/FeatureCard';
 import { BsGear, BsCloud, BsCodeSquare, BsShieldCheck, BsDiagram3, BsGraphUp, BsSpeedometer, BsBug, BsRobot, BsArrowRight, BsStars, BsLightning } from 'react-icons/bs';
 import { motion } from 'framer-motion';
 import MultiModalChat from '@/components/MultiModalChat';
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const features = [
     {
       title: "CI/CD Pipeline Management",
@@ -110,93 +113,140 @@ export default function Home() {
           
           <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center">
             <div className="mb-8 md:mb-0 md:w-2/3">
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium mb-4">
-                  <BsStars className="mr-2 text-yellow-300" />
-                  AI-Powered DevOps Platform
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                  DevOps AI Agent Platform
-                </h1>
-                <p className="text-lg text-white/80 mb-6 max-w-2xl">
-                  Leverage the power of artificial intelligence to streamline your DevOps workflows, 
-                  automate routine tasks, and optimize your infrastructure.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button className="flex items-center bg-white text-indigo-700 hover:bg-indigo-50 font-medium px-5 py-2.5 rounded-lg transition-colors shadow-md">
-                    <BsLightning className="mr-2" />
-                    Get Started
-                  </button>
-                  <button className="flex items-center bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium px-5 py-2.5 rounded-lg transition-colors">
-                    Learn More
-                    <BsArrowRight className="ml-2" />
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-            <div className="md:w-1/3 flex justify-center">
-              <motion.div 
-                className="relative"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <div className="w-40 h-40 md:w-56 md:h-56 rounded-full bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-indigo-500/20 backdrop-blur-sm p-1 flex items-center justify-center">
-                  <div className="w-full h-full rounded-full border-2 border-white/20 flex items-center justify-center">
-                    <BsRobot className="text-white w-16 h-16 md:w-24 md:h-24" />
+              {mounted ? (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium mb-4">
+                    <BsStars className="mr-2 text-yellow-300" />
+                    AI-Powered DevOps Platform
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                    DevOps AI Agent Platform
+                  </h1>
+                  <p className="text-lg text-white/80 mb-6 max-w-2xl">
+                    Leverage the power of artificial intelligence to streamline your DevOps workflows, 
+                    automate routine tasks, and optimize your infrastructure.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button className="flex items-center bg-white text-indigo-700 hover:bg-indigo-50 font-medium px-5 py-2.5 rounded-lg transition-colors shadow-md">
+                      <BsLightning className="mr-2" />
+                      Get Started
+                    </button>
+                    <button className="flex items-center bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium px-5 py-2.5 rounded-lg transition-colors">
+                      Learn More
+                      <BsArrowRight className="ml-2" />
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <div>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium mb-4">
+                    <BsStars className="mr-2 text-yellow-300" />
+                    AI-Powered DevOps Platform
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                    DevOps AI Agent Platform
+                  </h1>
+                  <p className="text-lg text-white/80 mb-6 max-w-2xl">
+                    Leverage the power of artificial intelligence to streamline your DevOps workflows, 
+                    automate routine tasks, and optimize your infrastructure.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button className="flex items-center bg-white text-indigo-700 hover:bg-indigo-50 font-medium px-5 py-2.5 rounded-lg transition-colors shadow-md">
+                      <BsLightning className="mr-2" />
+                      Get Started
+                    </button>
+                    <button className="flex items-center bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium px-5 py-2.5 rounded-lg transition-colors">
+                      Learn More
+                      <BsArrowRight className="ml-2" />
+                    </button>
                   </div>
                 </div>
-                <div className="absolute top-0 left-0 right-0 bottom-0 animate-spin-slow opacity-70" style={{ animationDuration: '20s' }}>
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="absolute w-2 h-2 bg-white rounded-full" 
-                    style={{ 
-                      top: `calc(50% + ${Math.sin(i * Math.PI / 4) * 140}px)`,
-                      left: `calc(50% + ${Math.cos(i * Math.PI / 4) * 140}px)`
-                    }}></div>
-                  ))}
+              )}
+            </div>
+            <div className="md:w-1/3 flex justify-center">
+              {mounted ? (
+                <motion.div 
+                  className="relative"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <div className="w-40 h-40 md:w-56 md:h-56 rounded-full bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-indigo-500/20 backdrop-blur-sm p-1 flex items-center justify-center">
+                    <div className="w-full h-full rounded-full border-2 border-white/20 flex items-center justify-center">
+                      <BsRobot className="text-white w-16 h-16 md:w-24 md:h-24" />
+                    </div>
+                  </div>
+                  <div className="absolute top-0 left-0 right-0 bottom-0 animate-spin-slow opacity-70" style={{ animationDuration: '20s' }}>
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="absolute w-2 h-2 bg-white rounded-full" 
+                      style={{ 
+                        top: `calc(50% + ${Math.sin(i * Math.PI / 4) * 140}px)`,
+                        left: `calc(50% + ${Math.cos(i * Math.PI / 4) * 140}px)`
+                      }}></div>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="relative">
+                  <div className="w-40 h-40 md:w-56 md:h-56 rounded-full bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-indigo-500/20 backdrop-blur-sm p-1 flex items-center justify-center">
+                    <div className="w-full h-full rounded-full border-2 border-white/20 flex items-center justify-center">
+                      <BsRobot className="text-white w-16 h-16 md:w-24 md:h-24" />
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Features heading */}
         <div className="text-center mb-12">
-          <motion.h2 
-            className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 inline-block mb-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            AI-Enhanced DevOps Features
-          </motion.h2>
-          <motion.p 
-            className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          {mounted ? (
+            <motion.h2 
+              className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 inline-block mb-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              AI-Enhanced DevOps Features
+            </motion.h2>
+          ) : (
+            <h2 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 inline-block mb-3">
+              AI-Enhanced DevOps Features
+            </h2>
+          )}
+          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             Select an operation to get started with AI-powered automation, optimization, and insights.
-          </motion.p>
+          </p>
         </div>
         
         {/* Features grid */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {features.map((feature, index) => (
-            <motion.div key={index} variants={itemVariants}>
-              <FeatureCard {...feature} />
-            </motion.div>
-          ))}
-        </motion.div>
+        {mounted ? (
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {features.map((feature, index) => (
+              <motion.div key={index} variants={itemVariants}>
+                <FeatureCard {...feature} />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <div key={index}>
+                <FeatureCard {...feature} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* AI platform benefits section */}
         <div className="mt-20 mb-16">
