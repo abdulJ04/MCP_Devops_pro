@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import asyncio
 import logging
@@ -28,7 +29,13 @@ app.add_middleware(
 
 EXECUTOR = ThreadPoolExecutor(max_workers=20)
 
-_credentials: Dict[str, Any] = {}
+_credentials: Dict[str, Any] = {
+    "aws_access_key": "test",
+    "aws_secret_key": "test",
+    "aws_region": "us-east-1",
+    "endpoint_url": "http://localhost:4566",
+    "use_localstack": True,
+}
 _sessions: Dict[str, Any] = {}
 _cache: Dict[str, Dict[str, Any]] = {}
 METRICS_TTL = 30
@@ -39,14 +46,18 @@ _session_created_at: float = 0
 
 def _get_session() -> boto3.Session:
     if "default" not in _sessions:
+        access_key = _credentials.get("aws_access_key", "")
+        secret_key = _credentials.get("aws_secret_key", "")
+        if not access_key or not secret_key:
+            raise HTTPException(status_code=401, detail="No AWS credentials configured. Please login to the dashboard first.")
         session_kwargs = {
-            "aws_access_key_id": _credentials.get("aws_access_key", "test"),
-            "aws_secret_access_key": _credentials.get("aws_secret_key", "test"),
+            "aws_access_key_id": access_key,
+            "aws_secret_access_key": secret_key,
             "region_name": _credentials.get("aws_region", "us-east-1"),
         }
         if _credentials.get("aws_session_token"):
             session_kwargs["aws_session_token"] = _credentials["aws_session_token"]
-        logger.info(f"Creating session: key={session_kwargs['aws_access_key_id'][:8]}..., localstack={_credentials.get('use_localstack', False)}")
+        logger.info(f"Creating session: key={access_key[:8]}..., localstack={_credentials.get('use_localstack', False)}")
         _sessions["default"] = boto3.Session(**session_kwargs)
     return _sessions["default"]
 
@@ -58,7 +69,7 @@ def _get_client(service: str):
     return _get_session().client(service, **kwargs)
 
 
-def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aws_region=None):
+def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aws_region=None, use_localstack=None):
     global _credentials, _sessions, _session_created_at
 
     # Check session timeout
@@ -70,21 +81,45 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
         _session_created_at = 0
         raise HTTPException(status_code=401, detail="Session expired. Please reconnect.")
 
-    if _credentials.get("use_localstack"):
+    # If explicitly told to use LocalStack, keep LocalStack mode
+    if use_localstack is True:
+        if not _credentials.get("use_localstack"):
+            logger.info("Switching to LocalStack mode")
+            _sessions.clear()
+            _cache.clear()
+            _credentials = {
+                "aws_access_key": access_key or "test",
+                "aws_secret_key": secret_key or "test",
+                "aws_region": aws_region or "us-east-1",
+                "endpoint_url": "http://localhost:4566",
+                "use_localstack": True,
+            }
         return
+
+    # If live credentials provided, switch to live mode
     if access_key and secret_key:
+        # If currently on LocalStack, clear sessions to force reconnect to live AWS
+        if _credentials.get("use_localstack"):
+            logger.info("Switching from LocalStack to live AWS")
+            _sessions.clear()
+            _cache.clear()
+
         if (_credentials.get("aws_access_key") != access_key or
             _credentials.get("aws_secret_key") != secret_key or
             _credentials.get("aws_session_token") != session_token):
-            logger.info(f"Setting credentials: key={access_key[:8]}..., region={aws_region}")
+            logger.info(f"Setting live credentials: key={access_key[:8]}..., region={aws_region}")
             _credentials = {
                 "aws_access_key": access_key,
                 "aws_secret_key": secret_key,
                 "aws_session_token": session_token,
                 "aws_region": aws_region or "us-east-1",
+                "use_localstack": False,
             }
             _sessions.clear()
             _session_created_at = time.time()
+    elif _credentials.get("use_localstack"):
+        # Keep using LocalStack defaults
+        return
 
 
 @app.post("/refresh")
@@ -200,6 +235,7 @@ async def auth(req: AuthRequest):
         "aws_region": aws_region,
     }
     _sessions.clear()
+    _session_created_at = time.time()
     try:
         session = boto3.Session(
             aws_access_key_id=access_key,
@@ -251,7 +287,7 @@ async def sync_credentials():
 
 @app.post("/ec2")
 async def ec2_instances(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ec2", METRICS_TTL)
     if cached:
         return cached
@@ -305,7 +341,7 @@ async def ec2_instances(request: dict = {}):
                 item["metrics"]["error"] = str(e)
             return item
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = [loop.run_in_executor(EXECUTOR, _get_instance_metrics, inst) for inst in all_instances]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for r in results:
@@ -321,7 +357,7 @@ async def ec2_instances(request: dict = {}):
 
 @app.post("/s3")
 async def s3_buckets(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("s3", INVENTORY_TTL)
     if cached:
         return cached
@@ -380,7 +416,7 @@ async def s3_buckets(request: dict = {}):
 
             return item
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = [loop.run_in_executor(EXECUTOR, _get_bucket_details, b) for b in buckets]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for r in results:
@@ -396,7 +432,7 @@ async def s3_buckets(request: dict = {}):
 
 @app.post("/lambda")
 async def lambda_functions(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("lambda", METRICS_TTL)
     if cached:
         return cached
@@ -453,7 +489,7 @@ async def lambda_functions(request: dict = {}):
                 pass
             return item
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = [loop.run_in_executor(EXECUTOR, _get_function_metrics, fn) for fn in functions]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for r in results:
@@ -469,7 +505,7 @@ async def lambda_functions(request: dict = {}):
 
 @app.post("/rds")
 async def rds_instances(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("rds", METRICS_TTL)
     if cached:
         return cached
@@ -516,7 +552,7 @@ async def rds_instances(request: dict = {}):
                 pass
             return item
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = [loop.run_in_executor(EXECUTOR, _get_db_metrics, db) for db in instances]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for r in results:
@@ -532,7 +568,7 @@ async def rds_instances(request: dict = {}):
 
 @app.post("/iam")
 async def iam_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("iam", INVENTORY_TTL)
     if cached:
         return cached
@@ -569,7 +605,7 @@ async def iam_info(request: dict = {}):
                 pass
             return item
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = [loop.run_in_executor(EXECUTOR, _get_user_details, u) for u in users]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for r in results:
@@ -601,7 +637,7 @@ async def iam_info(request: dict = {}):
 
 @app.post("/vpc")
 async def vpc_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("vpc", INVENTORY_TTL)
     if cached:
         return cached
@@ -610,7 +646,7 @@ async def vpc_info(request: dict = {}):
     result = {"vpcs": [], "securityGroups": []}
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         vpcs_resp, subnets_resp, sgs_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: client.describe_vpcs()),
             loop.run_in_executor(EXECUTOR, lambda: client.describe_subnets()),
@@ -654,7 +690,7 @@ async def vpc_info(request: dict = {}):
 
 @app.post("/cost")
 async def cost_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("cost", METRICS_TTL)
     if cached:
         return cached
@@ -663,7 +699,7 @@ async def cost_info(request: dict = {}):
 
     try:
         ce = _get_client("ce")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         def _get_daily_cost(start, end):
             r = ce.get_cost_and_usage(
@@ -729,7 +765,7 @@ async def cost_info(request: dict = {}):
 
 @app.post("/security")
 async def security_findings(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("security", METRICS_TTL)
     if cached:
         return cached
@@ -738,7 +774,7 @@ async def security_findings(request: dict = {}):
     finding_id = 1
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         s3_client = _get_client("s3")
         ec2_client = _get_client("ec2")
         iam_client = _get_client("iam")
@@ -822,7 +858,7 @@ async def security_findings(request: dict = {}):
 
 @app.post("/activity")
 async def activity_timeline(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("activity", METRICS_TTL)
     if cached:
         return cached
@@ -871,7 +907,7 @@ async def activity_timeline(request: dict = {}):
 
 @app.post("/ebs")
 async def ebs_volumes(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ebs", INVENTORY_TTL)
     if cached:
         return cached
@@ -879,7 +915,7 @@ async def ebs_volumes(request: dict = {}):
     result = {"volumes": [], "snapshots": []}
     try:
         ec2 = _get_client("ec2")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         vols_resp, snaps_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: ec2.describe_volumes()),
             loop.run_in_executor(EXECUTOR, lambda: ec2.describe_snapshots(OwnerIds=["self"])),
@@ -912,7 +948,7 @@ async def ebs_volumes(request: dict = {}):
 
 @app.post("/route53")
 async def route53_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("route53", INVENTORY_TTL)
     if cached:
         return cached
@@ -920,7 +956,7 @@ async def route53_info(request: dict = {}):
     result = {"zones": [], "health_checks": []}
     try:
         r53 = _get_client("route53")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         zones_resp, hc_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: r53.list_hosted_zones()),
             loop.run_in_executor(EXECUTOR, lambda: r53.list_health_checks()),
@@ -944,7 +980,7 @@ async def route53_info(request: dict = {}):
 
 @app.post("/elb")
 async def elb_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("elb", INVENTORY_TTL)
     if cached:
         return cached
@@ -952,7 +988,7 @@ async def elb_info(request: dict = {}):
     result = {"load_balancers": [], "target_groups": []}
     try:
         elb = _get_client("elbv2")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         lb_resp, tg_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: elb.describe_load_balancers()),
             loop.run_in_executor(EXECUTOR, lambda: elb.describe_target_groups()),
@@ -983,7 +1019,7 @@ async def elb_info(request: dict = {}):
 
 @app.post("/auto_scaling")
 async def auto_scaling_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("auto_scaling", INVENTORY_TTL)
     if cached:
         return cached
@@ -1019,7 +1055,7 @@ async def auto_scaling_info(request: dict = {}):
 
 @app.post("/cloudwatch_dash")
 async def cloudwatch_dashboards(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("cloudwatch_dash", METRICS_TTL)
     if cached:
         return cached
@@ -1027,7 +1063,7 @@ async def cloudwatch_dashboards(request: dict = {}):
     result = {"dashboards": [], "alarms": []}
     try:
         cw = _get_client("cloudwatch")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         dash_resp, alarm_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: cw.list_dashboards()),
             loop.run_in_executor(EXECUTOR, lambda: cw.describe_alarms()),
@@ -1055,7 +1091,7 @@ async def cloudwatch_dashboards(request: dict = {}):
 
 @app.post("/ssm")
 async def ssm_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ssm", INVENTORY_TTL)
     if cached:
         return cached
@@ -1063,7 +1099,7 @@ async def ssm_info(request: dict = {}):
     result = {"documents": [], "parameters": []}
     try:
         ssm = _get_client("ssm")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         docs_resp, params_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: ssm.list_documents()),
             loop.run_in_executor(EXECUTOR, lambda: ssm.describe_parameters()),
@@ -1091,7 +1127,7 @@ async def ssm_info(request: dict = {}):
 
 @app.post("/ecr")
 async def ecr_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ecr", INVENTORY_TTL)
     if cached:
         return cached
@@ -1116,7 +1152,7 @@ async def ecr_info(request: dict = {}):
 
 @app.post("/ecs")
 async def ecs_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ecs", INVENTORY_TTL)
     if cached:
         return cached
@@ -1151,7 +1187,7 @@ async def ecs_info(request: dict = {}):
 
 @app.post("/eks")
 async def eks_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("eks", INVENTORY_TTL)
     if cached:
         return cached
@@ -1181,7 +1217,7 @@ async def eks_info(request: dict = {}):
 
 @app.post("/cloudformation")
 async def cloudformation_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("cloudformation", INVENTORY_TTL)
     if cached:
         return cached
@@ -1209,7 +1245,7 @@ async def cloudformation_info(request: dict = {}):
 
 @app.post("/codepipeline")
 async def codepipeline_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("codepipeline", INVENTORY_TTL)
     if cached:
         return cached
@@ -1233,7 +1269,7 @@ async def codepipeline_info(request: dict = {}):
 
 @app.post("/codebuild")
 async def codebuild_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("codebuild", INVENTORY_TTL)
     if cached:
         return cached
@@ -1253,7 +1289,7 @@ async def codebuild_info(request: dict = {}):
 
 @app.post("/codedeploy")
 async def codedeploy_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("codedeploy", INVENTORY_TTL)
     if cached:
         return cached
@@ -1285,7 +1321,7 @@ async def codedeploy_info(request: dict = {}):
 
 @app.post("/secrets_manager")
 async def secrets_manager_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("secrets_manager", INVENTORY_TTL)
     if cached:
         return cached
@@ -1311,7 +1347,7 @@ async def secrets_manager_info(request: dict = {}):
 
 @app.post("/parameter_store")
 async def parameter_store_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("parameter_store", INVENTORY_TTL)
     if cached:
         return cached
@@ -1337,7 +1373,7 @@ async def parameter_store_info(request: dict = {}):
 
 @app.post("/acm")
 async def acm_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("acm", INVENTORY_TTL)
     if cached:
         return cached
@@ -1362,7 +1398,7 @@ async def acm_info(request: dict = {}):
 
 @app.post("/dynamodb")
 async def dynamodb_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("dynamodb", INVENTORY_TTL)
     if cached:
         return cached
@@ -1392,7 +1428,7 @@ async def dynamodb_info(request: dict = {}):
 
 @app.post("/sns")
 async def sns_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("sns", INVENTORY_TTL)
     if cached:
         return cached
@@ -1400,7 +1436,7 @@ async def sns_info(request: dict = {}):
     result = {"topics": [], "subscriptions": []}
     try:
         sns = _get_client("sns")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         topics_resp, subs_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: sns.list_topics()),
             loop.run_in_executor(EXECUTOR, lambda: sns.list_subscriptions()),
@@ -1424,7 +1460,7 @@ async def sns_info(request: dict = {}):
 
 @app.post("/sqs")
 async def sqs_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("sqs", INVENTORY_TTL)
     if cached:
         return cached
@@ -1457,7 +1493,7 @@ async def sqs_info(request: dict = {}):
 
 @app.post("/eventbridge")
 async def eventbridge_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("eventbridge", INVENTORY_TTL)
     if cached:
         return cached
@@ -1465,7 +1501,7 @@ async def eventbridge_info(request: dict = {}):
     result = {"rules": [], "buses": []}
     try:
         eb = _get_client("events")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         rules_resp, buses_resp = await asyncio.gather(
             loop.run_in_executor(EXECUTOR, lambda: eb.list_rules()),
             loop.run_in_executor(EXECUTOR, lambda: eb.list_event_buses()),
@@ -1491,7 +1527,7 @@ async def eventbridge_info(request: dict = {}):
 
 @app.post("/backup")
 async def backup_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("backup", INVENTORY_TTL)
     if cached:
         return cached
@@ -1499,7 +1535,7 @@ async def backup_info(request: dict = {}):
     result = {"vaults": [], "plans": [], "jobs": []}
     try:
         bk = _get_client("backup")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         def _get_vaults():
             try:
@@ -1543,17 +1579,22 @@ async def backup_info(request: dict = {}):
 
 @app.post("/budgets")
 async def budgets_info(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("budgets", INVENTORY_TTL)
     if cached:
         return cached
 
     result = {"budgets": []}
     try:
-        ce = _get_client("ce")
+        # Get account ID from STS
+        sts = _get_client("sts")
+        identity = sts.get_caller_identity()
+        account_id = identity.get("Account", "")
+        
+        budgets_client = _get_client("budgets")
         try:
-            budgets = ce.describe_budgets().get("Budgets", [])
-        except AttributeError:
+            budgets = budgets_client.describe_budgets(AccountId=account_id).get("Budgets", [])
+        except (AttributeError, ClientError):
             budgets = []
         for b in budgets:
             result["budgets"].append({
@@ -1576,7 +1617,7 @@ async def budgets_info(request: dict = {}):
 
 @app.post("/dashboard")
 async def dashboard(request: dict = {}):
-    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"))
+    _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("dashboard", METRICS_TTL)
     if cached:
         return cached
@@ -1602,6 +1643,915 @@ async def dashboard(request: dict = {}):
 
     _set_cache("dashboard", result)
     return result
+
+
+# ============================================================
+# LOCAL AI ANALYSIS ENGINE (No LLM needed - Rule-based intelligence)
+# ============================================================
+
+async def _gather_all_aws_data(request: dict = {}):
+    """Gather all AWS data in parallel for analysis."""
+    try:
+        ec2_data, s3_data, lambda_data, rds_data, sec_data, iam_data, cost_data = await asyncio.gather(
+            ec2_instances(request), s3_buckets(request),
+            lambda_functions(request), rds_instances(request),
+            security_findings(request), iam_info(request),
+            cost_info(request),
+            return_exceptions=True
+        )
+    except Exception:
+        ec2_data = await ec2_instances(request)
+        s3_data = {"buckets": []}
+        lambda_data = {"functions": []}
+        rds_data = {"databases": []}
+        sec_data = {"findings": []}
+        iam_data = {"users": []}
+        cost_data = {"costs": {}}
+
+    def safe(d, default=None):
+        return d if not isinstance(d, Exception) else (default or {})
+
+    return {
+        "ec2": safe(ec2_data, {"instances": []}),
+        "s3": safe(s3_data, {"buckets": []}),
+        "lambda": safe(lambda_data, {"functions": []}),
+        "rds": safe(rds_data, {"databases": []}),
+        "iam": safe(iam_data, {"users": []}),
+        "cost": safe(cost_data, {"costs": {}}),
+        "security": safe(sec_data, {"findings": []}),
+    }
+
+
+def _analyze_security(data: dict) -> str:
+    """Deep security analysis with recommendations."""
+    findings = data["security"].get("findings", [])
+    iam_users = data["iam"].get("users", [])
+    s3_buckets = data["s3"].get("buckets", [])
+    instances = data["ec2"].get("instances", [])
+
+    report = "# Security Analysis Report\n\n"
+
+    # Score system
+    score = 100
+    issues = []
+    recommendations = []
+
+    # 1. Security Group Analysis (from findings)
+    open_sgs = []
+    for f in findings:
+        if "security group" in f.get("title", "").lower() and "0.0.0.0/0" in f.get("title", ""):
+            open_sgs.append((f.get("resource", "unknown"), "open"))
+            score -= 15
+
+    if open_sgs:
+        report += "## Security Groups - Open to World\n"
+        report += f"**Risk Level: HIGH** | Score Impact: -{len(open_sgs)*15}\n\n"
+        for sg_name, port in open_sgs:
+            report += f"- **{sg_name}** - Port `{port}` open to `0.0.0.0/0`\n"
+        report += "\n**Recommendation:** Restrict to specific CIDR ranges. Use VPN or bastion hosts for admin access.\n\n"
+        issues.append(f"{len(open_sgs)} security groups open to internet")
+        recommendations.append("Restrict security group rules to specific IP ranges")
+    else:
+        report += "## Security Groups\n"
+        report += "**Status: OK** - No overly permissive rules found.\n\n"
+
+    # 2. S3 Security
+    unencrypted_buckets = []
+    public_buckets = []
+    for bucket in s3_buckets:
+        name = bucket.get("Name", "")
+        # Check encryption from findings
+        for f in findings:
+            if name in f.get("resource", "") and "no encryption" in f.get("title", "").lower():
+                unencrypted_buckets.append(name)
+            if name in f.get("resource", "") and "public access" in f.get("title", "").lower():
+                public_buckets.append(name)
+
+    if unencrypted_buckets:
+        report += "## S3 Encryption\n"
+        report += f"**Risk Level: HIGH** | {len(unencrypted_buckets)} buckets unencrypted\n\n"
+        for b in unencrypted_buckets[:5]:
+            report += f"- `{b}` - No server-side encryption\n"
+        report += "\n**Recommendation:** Enable AES-256 or KMS encryption on all buckets.\n\n"
+        score -= len(unencrypted_buckets) * 10
+        issues.append(f"{len(unencrypted_buckets)} S3 buckets without encryption")
+        recommendations.append("Enable server-side encryption on all S3 buckets")
+
+    if public_buckets:
+        report += "## S3 Public Access\n"
+        report += f"**Risk Level: CRITICAL** | {len(public_buckets)} publicly accessible buckets\n\n"
+        for b in public_buckets[:5]:
+            report += f"- `{b}` - Public access block not configured\n"
+        report += "\n**Recommendation:** Enable all 4 public access block settings on every bucket.\n\n"
+        score -= len(public_buckets) * 20
+        issues.append(f"{len(public_buckets)} S3 buckets publicly accessible")
+        recommendations.append("Enable public access block on all S3 buckets")
+
+    # 3. IAM Analysis
+    if iam_users:
+        report += "## IAM Users\n"
+        report += f"**Total Users:** {len(iam_users)}\n\n"
+        mfa_disabled = [u for u in iam_users if not u.get("mfa_enabled", False)]
+        if mfa_disabled:
+            report += f"**Risk Level: HIGH** | {len(mfa_disabled)} users without MFA\n\n"
+            for u in mfa_disabled[:5]:
+                report += f"- `{u.get('username', 'unknown')}` - MFA not enabled\n"
+            report += "\n**Recommendation:** Enable MFA on all IAM users, especially admin accounts.\n\n"
+            score -= len(mfa_disabled) * 12
+            issues.append(f"{len(mfa_disabled)} IAM users without MFA")
+            recommendations.append("Enable MFA on all IAM users")
+        else:
+            report += "**MFA Status:** All users have MFA enabled\n\n"
+
+    # 4. Instance Security
+    public_instances = [i for i in instances if i.get("public_ip")]
+    if public_instances:
+        report += "## EC2 Public Exposure\n"
+        report += f"**Risk Level: MEDIUM** | {len(public_instances)} instances with public IPs\n\n"
+        for i in public_instances[:5]:
+            report += f"- `{i.get('name', i['id'])}` - Public IP: `{i['public_ip']}`\n"
+        report += "\n**Recommendation:** Use private subnets + NAT gateway. Avoid public IPs unless required.\n\n"
+        score -= len(public_instances) * 5
+        issues.append(f"{len(public_instances)} EC2 instances publicly exposed")
+        recommendations.append("Move instances to private subnets, use NAT gateway")
+
+    # Final score
+    score = max(0, score)
+    emoji = "🟢" if score >= 80 else "🟡" if score >= 50 else "🔴"
+    report = f"## Overall Security Score: {emoji} {score}/100\n\n" + report
+
+    if issues:
+        report += "---\n\n## Summary of Issues\n"
+        for i, issue in enumerate(issues, 1):
+            report += f"{i}. {issue}\n"
+        report += "\n## Priority Recommendations\n"
+        for i, rec in enumerate(recommendations, 1):
+            report += f"{i}. {rec}\n"
+
+    return report
+
+
+def _analyze_cost(data: dict) -> str:
+    """Cost optimization analysis."""
+    instances = data["ec2"].get("instances", [])
+    s3_buckets = data["s3"].get("buckets", [])
+    lambda_funcs = data["lambda"].get("functions", [])
+    rds_dbs = data["rds"].get("databases", [])
+
+    report = "# Cost Optimization Analysis\n\n"
+    score = 100
+    recommendations = []
+
+    # 1. EC2 Cost Analysis
+    running_instances = [i for i in instances if i.get("state") == "running"]
+    stopped_instances = [i for i in instances if i.get("state") == "stopped"]
+
+    if stopped_instances:
+        report += "## EC2 - Stopped Instances\n"
+        report += f"**Savings Opportunity:** {len(stopped_instances)} instances still incurring EBS charges\n\n"
+        for i in stopped_instances[:5]:
+            report += f"- `{i.get('name', i['id'])}` ({i.get('type', 'N/A')}) - Stopped since launch\n"
+        report += "\n**Action:** Terminate unused stopped instances to stop EBS charges.\n\n"
+        recommendations.append("Terminate stopped instances to save on EBS storage")
+
+    if running_instances:
+        instance_types = {}
+        for i in running_instances:
+            t = i.get("type", "unknown")
+            instance_types[t] = instance_types.get(t, 0) + 1
+
+        report += "## EC2 - Running Instances\n"
+        report += f"**Total Running:** {len(running_instances)}\n\n"
+        for t, count in instance_types.items():
+            report += f"- `{t}` x {count}\n"
+
+        # Check for t2/t3 burstable (often overpaying)
+        burstable = [i for i in running_instances if i.get("type", "").startswith(("t2.", "t3."))]
+        if burstable:
+            report += f"\n**Note:** {len(burstable)} burstable instances. If consistently high CPU, consider switching to fixed-performance instances.\n"
+            recommendations.append("Review burstable instances - switch to fixed-performance if CPU consistently high")
+            score -= 10
+
+        report += "\n"
+
+    # 2. RDS Cost
+    if rds_dbs:
+        report += "## RDS Databases\n"
+        report += f"**Total:** {len(rds_dbs)} databases\n\n"
+        multi_az = [db for db in rds_dbs if db.get("multi_az")]
+        if multi_az:
+            report += f"- {len(multi_az)} Multi-AZ deployments (2x cost)\n"
+            report += "  **Recommendation:** Use Multi-AZ only for production. Dev/test can use single-AZ.\n"
+            recommendations.append("Use single-AZ for non-production RDS instances")
+            score -= 5
+        report += "\n"
+
+    # 3. S3 Lifecycle
+    if s3_buckets:
+        report += "## S3 Storage\n"
+        report += f"**Total Buckets:** {len(s3_buckets)}\n\n"
+        report += "**Recommendation:** Implement lifecycle policies to move old data to Glacier.\n"
+        recommendations.append("Add S3 lifecycle policies to move old objects to cheaper storage tiers")
+        score -= 5
+
+    # 4. Lambda Optimization
+    if lambda_funcs:
+        report += "## Lambda Functions\n"
+        report += f"**Total Functions:** {len(lambda_funcs)}\n\n"
+        cold_starts = [f for f in lambda_funcs if f.get("state") == "Failed"]
+        if cold_starts:
+            report += f"- {len(cold_starts)} functions in failed state\n"
+            recommendations.append("Review and fix failed Lambda functions")
+            score -= 10
+        report += "\n"
+
+    # Summary
+    score = max(0, score)
+    report = f"## Cost Score: {'🟢' if score >= 80 else '🟡' if score >= 50 else '🔴'} {score}/100\n\n" + report
+
+    if recommendations:
+        report += "---\n\n## Cost Saving Recommendations\n"
+        for i, rec in enumerate(recommendations, 1):
+            report += f"{i}. {rec}\n"
+
+    estimated = len(stopped_instances) * 5 + len([i for i in running_instances if "t2" in i.get("type","")]) * 10
+    if estimated:
+        report += f"\n**Estimated Monthly Savings:** ~${estimated}+ by optimizing these resources.\n"
+
+    return report
+
+
+def _analyze_architecture(data: dict) -> str:
+    """Architecture review and best practices."""
+    instances = data["ec2"].get("instances", [])
+    s3_buckets = data["s3"].get("buckets", [])
+    lambda_funcs = data["lambda"].get("functions", [])
+    rds_dbs = data["rds"].get("databases", [])
+    findings = data["security"].get("findings", [])
+
+    report = "# Architecture Review\n\n"
+    score = 100
+    issues = []
+    recommendations = []
+
+    # 1. High Availability Check
+    if instances:
+        azs = set(i.get("az", "") for i in instances if i.get("az"))
+        if len(azs) < 2 and len(instances) > 1:
+            report += "## High Availability\n"
+            report += "**Risk: LOW** | All instances in single AZ\n\n"
+            report += f"Instances spread across: {', '.join(azs) or 'N/A'}\n\n"
+            report += "**Recommendation:** Distribute instances across multiple AZs for fault tolerance.\n\n"
+            score -= 20
+            issues.append("All EC2 instances in single availability zone")
+            recommendations.append("Distribute EC2 instances across multiple AZs")
+        elif len(azs) >= 2:
+            report += "## High Availability\n"
+            report += f"**Status: OK** - Instances across {len(azs)} AZs\n\n"
+        else:
+            report += "## High Availability\n"
+            report += f"**Info:** Single instance, AZ spread N/A\n\n"
+
+    # 2. Database Redundancy
+    if rds_dbs:
+        single_az_rds = [db for db in rds_dbs if not db.get("multi_az")]
+        if single_az_rds:
+            report += "## Database Redundancy\n"
+            report += f"**Risk: MEDIUM** | {len(single_az_rds)} RDS instances without Multi-AZ\n\n"
+            for db in single_az_rds[:3]:
+                report += f"- `{db.get('identifier', 'unknown')}` - Single-AZ\n"
+            report += "\n**Recommendation:** Enable Multi-AZ for production databases.\n\n"
+            score -= 15
+            issues.append(f"{len(single_az_rds)} RDS instances without Multi-AZ")
+            recommendations.append("Enable Multi-AZ for production RDS instances")
+
+    # 3. Network Architecture (from findings)
+    open_sgs = len([f for f in findings if "security group" in f.get("title", "").lower() and "0.0.0.0/0" in f.get("title", "")])
+
+    if open_sgs > 5:
+        report += "## Network Architecture\n"
+        report += f"**Risk: HIGH** | {open_sgs} overly permissive security group rules\n\n"
+        report += "**Recommendation:** Implement defense-in-depth:\n"
+        report += "1. Use private subnets for application tier\n"
+        report += "2. Bastion host or SSM Session Manager for admin\n"
+        report += "3. WAF for web-facing services\n\n"
+        score -= 20
+        issues.append("Excessive open security group rules")
+        recommendations.append("Implement network segmentation and least-privilege access")
+    elif open_sgs > 0:
+        report += "## Network Architecture\n"
+        report += f"**Risk: LOW** | {open_sgs} open rules (review recommended)\n\n"
+
+    # 4. Serverless Adoption
+    if instances and not lambda_funcs:
+        report += "## Serverless Opportunities\n"
+        report += "**Potential:** No Lambda functions found\n\n"
+        report += "**Recommendation:** Consider converting suitable workloads to Lambda:\n"
+        report += "- API backends\n"
+        report += "- Scheduled tasks\n"
+        report += "- Event-driven processing\n\n"
+        recommendations.append("Evaluate serverless architecture for suitable workloads")
+
+    # 5. Infrastructure as Code
+    report += "## Infrastructure as Code\n"
+    report += "**Recommendation:**\n"
+    report += "- Use CloudFormation/Terraform for all resources\n"
+    report += "- Implement CI/CD pipelines\n"
+    report += "- Use AWS Config for compliance monitoring\n\n"
+    recommendations.append("Implement Infrastructure as Code with CloudFormation/Terraform")
+
+    # Summary
+    score = max(0, score)
+    report = f"## Architecture Score: {'🟢' if score >= 80 else '🟡' if score >= 50 else '🔴'} {score}/100\n\n" + report
+
+    if issues:
+        report += "---\n\n## Issues Found\n"
+        for i, issue in enumerate(issues, 1):
+            report += f"{i}. {issue}\n"
+        report += "\n## Recommendations\n"
+        for i, rec in enumerate(recommendations, 1):
+            report += f"{i}. {rec}\n"
+
+    return report
+
+
+def _analyze_overall(data: dict) -> str:
+    """Comprehensive health check combining all analyses."""
+    sec_report = _analyze_security(data)
+    cost_report = _analyze_cost(data)
+    arch_report = _analyze_architecture(data)
+
+    # Extract scores
+    import re
+    sec_score = re.search(r'(\d+)/100', sec_report)
+    cost_score = re.search(r'(\d+)/100', cost_report)
+    arch_score = re.search(r'(\d+)/100', arch_report)
+
+    sec_val = int(sec_score.group(1)) if sec_score else 0
+    cost_val = int(cost_score.group(1)) if cost_score else 0
+    arch_val = int(arch_score.group(1)) if arch_score else 0
+    overall = (sec_val + cost_val + arch_val) // 3
+
+    emoji = "🟢" if overall >= 80 else "🟡" if overall >= 50 else "🔴"
+
+    report = f"# Infrastructure Health Report\n\n"
+    report += f"## Overall Score: {emoji} {overall}/100\n\n"
+    report += f"| Category | Score |\n|----------|-------|\n"
+    report += f"| Security | {'🟢' if sec_val >= 80 else '🟡' if sec_val >= 50 else '🔴'} {sec_val}/100 |\n"
+    report += f"| Cost Optimization | {'🟢' if cost_val >= 80 else '🟡' if cost_val >= 50 else '🔴'} {cost_val}/100 |\n"
+    report += f"| Architecture | {'🟢' if arch_val >= 80 else '🟡' if arch_val >= 50 else '🔴'} {arch_val}/100 |\n\n"
+
+    report += "---\n\n"
+    report += "## Security Summary\n"
+    # Extract just the findings from security report
+    for line in sec_report.split("\n"):
+        if line.startswith("- ") or "Risk Level" in line or "Status:" in line:
+            report += f"  {line}\n"
+
+    report += "\n## Cost Summary\n"
+    for line in cost_report.split("\n"):
+        if line.startswith("- ") or "Savings" in line or "Total" in line:
+            report += f"  {line}\n"
+
+    report += "\n## Architecture Summary\n"
+    for line in arch_report.split("\n"):
+        if line.startswith("- ") or "Risk:" in line or "Status:" in line or "Potential:" in line:
+            report += f"  {line}\n"
+
+    report += "\n---\n\n**Commands for detailed analysis:**\n"
+    report += "- `security analysis` - Full security report\n"
+    report += "- `cost analysis` - Cost optimization report\n"
+    report += "- `architecture review` - Architecture best practices\n"
+
+    return report
+
+
+# ============================================================
+# GROQ FREE API INTEGRATION (Fast, Free LLM)
+# ============================================================
+
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+async def _groq_chat(message: str, context: str = "") -> str:
+    """Use Groq free API (llama3-8b) for complex queries."""
+    if not GROQ_API_KEY:
+        return ""
+
+    try:
+        import httpx
+        system_prompt = """You are a senior DevOps/AWS cloud architect assistant.
+You help users manage AWS infrastructure, analyze security, optimize costs, and recommend best practices.
+Be concise, use bullet points, and provide actionable recommendations.
+If you need specific AWS data, mention which AWS CLI/API command to use."""
+
+        user_msg = message
+        if context:
+            user_msg = f"Current AWS Infrastructure:\n{context}\n\nUser Question: {message}"
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama3-8b-instruct",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg}
+                    ],
+                    "max_tokens": 1024,
+                    "temperature": 0.3,
+                }
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        logging.warning(f"Groq API error: {e}")
+    return ""
+
+
+# ============================================================
+# OLLAMA LOCAL LLM INTEGRATION (Fast, Free, No API Key)
+# ============================================================
+
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b")
+
+async def _ollama_chat(message: str, context: str = "") -> str:
+    """Use local Ollama LLM for complex queries."""
+    try:
+        import httpx
+        system_prompt = """You are a senior DevOps/AWS cloud architect assistant.
+You help users manage AWS infrastructure, analyze security, optimize costs, and recommend best practices.
+Be concise, use bullet points, and provide actionable recommendations.
+Answer in 3-5 sentences max. Use markdown formatting."""
+
+        user_msg = message
+        if context:
+            user_msg = f"Current AWS Infrastructure:\n{context}\n\nUser Question: {message}"
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{OLLAMA_URL}/api/chat",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg}
+                    ],
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "num_predict": 512,
+                        "num_ctx": 4096,
+                    }
+                }
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("message", {}).get("content", "")
+    except Exception as e:
+        logging.warning(f"Ollama error: {e}")
+    return ""
+
+
+# ============================================================
+# ANTHROPIC CLAUDE API INTEGRATION (Paid - Best Quality)
+# ============================================================
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+async def _claude_chat(message: str, context: str = "") -> str:
+    """Use Anthropic Claude API for complex queries (requires paid API key)."""
+    if not ANTHROPIC_API_KEY:
+        return ""
+
+    try:
+        import httpx
+        system_prompt = """You are a senior DevOps/AWS cloud architect assistant.
+You help users manage AWS infrastructure, analyze security, optimize costs, and recommend best practices.
+Be concise, use bullet points, and provide actionable recommendations.
+Answer in 3-5 sentences max. Use markdown formatting."""
+
+        user_msg = message
+        if context:
+            user_msg = f"Current AWS Infrastructure:\n{context}\n\nUser Question: {message}"
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-3-5-sonnet-20241022",
+                    "max_tokens": 1024,
+                    "system": system_prompt,
+                    "messages": [
+                        {"role": "user", "content": user_msg}
+                    ],
+                }
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("content", [{}])[0].get("text", "")
+    except Exception as e:
+        logging.warning(f"Anthropic API error: {e}")
+    return ""
+
+
+# ============================================================
+# AI CHAT ENDPOINT - Smart Command Parsing + MCP Execution
+# ============================================================
+
+@app.post("/chat")
+async def chat(request: dict = {}):
+    message = request.get("message", "").strip()
+    if not message:
+        return {"response": "Please type a command or question.", "tools_used": []}
+
+    msg = message.lower()
+    tools_used = []
+    response = ""
+
+    try:
+        # AWS EC2 Commands
+        if any(w in msg for w in ["list ec2", "show ec2", "ec2 instances", "instances", "list servers", "show servers"]):
+            tools_used.append("list_ec2_instances")
+            data = await ec2_instances(request)
+            instances = data.get("instances", [])
+            if not instances:
+                response = "No EC2 instances found.\n\n"
+            else:
+                running = [i for i in instances if i.get("state") == "running"]
+                stopped = [i for i in instances if i.get("state") == "stopped"]
+                response = f"Found **{len(instances)} EC2 instances**:\n\n"
+                response += f"Running: {len(running)} | Stopped: {len(stopped)}\n\n"
+                for inst in instances[:10]:
+                    state_emoji = "🟢" if inst["state"] == "running" else "🔴" if inst["state"] == "stopped" else "🟡"
+                    response += f"{state_emoji} **{inst.get('name', inst['id'])}** ({inst.get('type', 'N/A')}) - {inst['state']}\n"
+                    if inst.get('public_ip'):
+                        response += f"  Public IP: `{inst['public_ip']}`\n"
+                if len(instances) > 10:
+                    response += f"\n...and {len(instances)-10} more instances.\n"
+
+        elif any(w in msg for w in ["stop instance", "stop server", "stop ec2"]):
+            id_match = re.search(r'(i-[0-9a-f]+|\S+)', msg.split("stop")[-1].strip())
+            if id_match:
+                instance_id = id_match.group(1)
+                tools_used.append("stop_ec2_instance")
+                loop = asyncio.get_running_loop()
+                ec2 = get_client("ec2")
+                await loop.run_in_executor(EXECUTOR, lambda: ec2.stop_instances(InstanceIds=[instance_id]))
+                response = f"Instance **{instance_id}** stop command sent."
+            else:
+                response = "Please specify the instance ID. Example: `stop instance i-1234567890abcdef0`"
+
+        elif any(w in msg for w in ["start instance", "start server", "start ec2"]):
+            id_match = re.search(r'(i-[0-9a-f]+|\S+)', msg.split("start")[-1].strip())
+            if id_match:
+                instance_id = id_match.group(1)
+                tools_used.append("start_ec2_instance")
+                loop = asyncio.get_running_loop()
+                ec2 = get_client("ec2")
+                await loop.run_in_executor(EXECUTOR, lambda: ec2.start_instances(InstanceIds=[instance_id]))
+                response = f"Instance **{instance_id}** start command sent."
+            else:
+                response = "Please specify the instance ID. Example: `start instance i-1234567890abcdef0`"
+
+        # S3 Commands
+        elif any(w in msg for w in ["list s3", "show s3", "s3 buckets", "buckets", "list buckets"]):
+            tools_used.append("list_s3_buckets")
+            data = await s3_buckets(request)
+            buckets = data.get("buckets", [])
+            if not buckets:
+                response = "No S3 buckets found.\n"
+            else:
+                response = f"Found **{len(buckets)} S3 buckets**:\n\n"
+                for b in buckets[:15]:
+                    size = b.get("size", "0 B")
+                    encryption = "🔒" if b.get("encryption") else "⚠️"
+                    response += f"{encryption} **{b['name']}** - {size} ({b.get('region', 'N/A')})\n"
+                if len(buckets) > 15:
+                    response += f"\n...and {len(buckets)-15} more buckets.\n"
+
+        # Lambda Commands
+        elif any(w in msg for w in ["list lambda", "show lambda", "lambda functions", "functions"]):
+            tools_used.append("list_lambda_functions")
+            data = await lambda_functions(request)
+            functions = data.get("functions", [])
+            if not functions:
+                response = "No Lambda functions found.\n"
+            else:
+                response = f"Found **{len(functions)} Lambda functions**:\n\n"
+                for fn in functions[:10]:
+                    state_emoji = "🟢" if fn.get("state") == "Active" else "🔴"
+                    response += f"{state_emoji} **{fn['name']}** - {fn.get('runtime', 'N/A')}\n"
+                    response += f"  Memory: {fn.get('memory', 'N/A')} MB | Timeout: {fn.get('timeout', 'N/A')}s\n"
+
+        # DynamoDB Commands
+        elif any(w in msg for w in ["list dynamo", "dynamodb tables", "dynamo tables", "show tables"]):
+            tools_used.append("list_dynamodb_tables")
+            data = await dynamodb_info(request)
+            tables = data.get("tables", [])
+            if not tables:
+                response = "No DynamoDB tables found.\n"
+            else:
+                response = f"Found **{len(tables)} DynamoDB tables**:\n\n"
+                for t in tables[:10]:
+                    response += f"📊 **{t['name']}** - Status: {t.get('status', 'N/A')}\n"
+
+        # RDS Commands
+        elif any(w in msg for w in ["list rds", "show rds", "databases", "rds instances"]):
+            tools_used.append("list_rds_instances")
+            data = await rds_instances(request)
+            databases = data.get("databases", [])
+            if not databases:
+                response = "No RDS databases found.\n"
+            else:
+                response = f"Found **{len(databases)} RDS databases**:\n\n"
+                for db in databases[:10]:
+                    status_emoji = "🟢" if db.get("status") == "available" else "🔴"
+                    response += f"{status_emoji} **{db['name']}** - {db.get('engine', 'N/A')} {db.get('engine_version', '')}\n"
+                    response += f"  Class: {db.get('instance_class', 'N/A')} | Storage: {db.get('storage', 'N/A')} GB\n"
+
+        # IAM Commands
+        elif any(w in msg for w in ["list iam", "show iam", "iam users", "users", "list users"]):
+            tools_used.append("list_iam_users")
+            data = await iam_info(request)
+            users = data.get("users", [])
+            if not users:
+                response = "No IAM users found.\n"
+            else:
+                response = f"Found **{len(users)} IAM users**:\n\n"
+                for u in users[:10]:
+                    mfa = "🔒" if u.get("mfa_enabled") else "⚠️"
+                    response += f"{mfa} **{u['name']}** - Created: {u.get('created', 'N/A')}\n"
+
+        # VPC Commands
+        elif any(w in msg for w in ["list vpc", "show vpc", "vpcs", "network"]):
+            tools_used.append("list_vpcs")
+            data = await vpc_info(request)
+            vpcs = data.get("vpcs", [])
+            if not vpcs:
+                response = "No VPCs found.\n"
+            else:
+                response = f"Found **{len(vpcs)} VPCs**:\n\n"
+                for v in vpcs[:10]:
+                    response += f"🌐 **{v.get('name', v['id'])}** - CIDR: {v.get('cidr', 'N/A')}\n"
+                    response += f"  Subnets: {v.get('subnet_count', 0)} | State: {v.get('state', 'N/A')}\n"
+
+        # Cost Commands (basic - short commands only)
+        elif msg in ["cost", "show cost", "billing", "how much", "expenses", "cost overview"]:
+            tools_used.append("cost_info")
+            data = await cost_info(request)
+            response = f"**AWS Cost Overview**:\n\n"
+            response += f"Today: **${data.get('today', 0):.2f}**\n"
+            response += f"Yesterday: **${data.get('yesterday', 0):.2f}**\n"
+            response += f"This Month: **${data.get('month', 0):.2f}**\n"
+            response += f"Forecast: **${data.get('forecast', 0):.2f}**\n"
+
+            by_service = data.get("byService", [])
+            if by_service:
+                response += "\n**Top Services:**\n"
+                for svc in by_service[:5]:
+                    response += f"• {svc.get('service', 'N/A')}: **${svc.get('cost', 0):.2f}**\n"
+
+        # Security Commands (basic - short commands only)
+        elif msg in ["security", "show security", "security findings", "list security", "vulnerabilities"]:
+            tools_used.append("security_findings")
+            data = await security_findings(request)
+            findings = data.get("findings", [])
+            if not findings:
+                response = "No security findings. Your infrastructure looks clean!"
+            else:
+                critical = [f for f in findings if f.get("severity") == "Critical"]
+                high = [f for f in findings if f.get("severity") == "High"]
+                response = f"**Security Findings**: {len(findings)} total\n\n"
+                if critical:
+                    response += f"🔴 Critical: {len(critical)}\n"
+                if high:
+                    response += f"🟠 High: {len(high)}\n"
+                response += "\n**Recent Findings:**\n"
+                for f in findings[:5]:
+                    sev = f.get("severity", "N/A")
+                    emoji = "🔴" if sev == "Critical" else "🟠" if sev == "High" else "🟡"
+                    response += f"{emoji} **{f.get('title', 'N/A')}**\n  Resource: `{f.get('resource', 'N/A')}`\n"
+
+        # ECS Commands
+        elif any(w in msg for w in ["list ecs", "show ecs", "ecs clusters", "containers"]):
+            tools_used.append("list_ecs_clusters")
+            data = await ecs_info(request)
+            clusters = data.get("clusters", [])
+            if not clusters:
+                response = "No ECS clusters found.\n"
+            else:
+                response = f"Found **{len(clusters)} ECS clusters**:\n\n"
+                for c in clusters[:10]:
+                    response += f"🐳 **{c['name']}** - Services: {c.get('services', 0)} | Running: {c.get('running_tasks', 0)}\n"
+
+        # SQS Commands
+        elif any(w in msg for w in ["list sqs", "show sqs", "sqs queues", "queues"]):
+            tools_used.append("list_sqs_queues")
+            data = await sqs_info(request)
+            queues = data.get("queues", [])
+            if not queues:
+                response = "No SQS queues found.\n"
+            else:
+                response = f"Found **{len(queues)} SQS queues**:\n\n"
+                for q in queues[:10]:
+                    response += f"📨 **{q['name']}** - Messages: {q.get('messages_available', 0)} available\n"
+
+        # SNS Commands
+        elif any(w in msg for w in ["list sns", "show sns", "sns topics", "topics", "notifications"]):
+            tools_used.append("list_sns_topics")
+            data = await sns_info(request)
+            topics = data.get("topics", [])
+            if not topics:
+                response = "No SNS topics found.\n"
+            else:
+                response = f"Found **{len(topics)} SNS topics**:\n\n"
+                for t in topics[:10]:
+                    response += f"📢 **{t['name']}** - Subscriptions: {t.get('subscriptions_count', 0)}\n"
+
+        # Secrets Manager
+        elif any(w in msg for w in ["list secrets", "show secrets", "secrets manager"]):
+            tools_used.append("list_secrets")
+            data = await secrets_manager_info(request)
+            secrets = data.get("secrets", [])
+            if not secrets:
+                response = "No secrets found in Secrets Manager.\n"
+            else:
+                response = f"Found **{len(secrets)} secrets**:\n\n"
+                for s in secrets[:10]:
+                    response += f"🔐 **{s['name']}** - Created: {s.get('created', 'N/A')}\n"
+
+        # CloudWatch
+        elif any(w in msg for w in ["cloudwatch", "alarms", "monitoring"]):
+            tools_used.append("list_cloudwatch_alarms")
+            data = await cloudwatch_dashboards(request)
+            alarms = data.get("alarms", [])
+            dashboards = data.get("dashboards", [])
+            response = f"**CloudWatch Overview**:\n\n"
+            response += f"Dashboards: {len(dashboards)}\n"
+            response += f"Alarms: {len(alarms)}\n"
+            if alarms:
+                response += "\n**Alarms:**\n"
+                for a in alarms[:5]:
+                    state_emoji = "🔴" if a.get("state") == "ALARM" else "🟢"
+                    response += f"{state_emoji} **{a['name']}** - {a.get('state', 'N/A')}\n"
+
+        # General Status
+        elif msg in ["status", "show status", "overview", "summary", "dashboard", "show overview"]:
+            tools_used.extend(["ec2_instances", "s3_buckets", "lambda_functions", "rds_instances"])
+            ec2_data, s3_data, lambda_data, rds_data = await asyncio.gather(
+                ec2_instances(request), s3_buckets(request),
+                lambda_functions(request), rds_instances(request)
+            )
+            ec2_count = len(ec2_data.get("instances", []))
+            running = len([i for i in ec2_data.get("instances", []) if i.get("state") == "running"])
+            s3_count = len(s3_data.get("buckets", []))
+            lambda_count = len(lambda_data.get("functions", []))
+            rds_count = len(rds_data.get("databases", []))
+
+            response = "**Infrastructure Overview:**\n\n"
+            response += f"🖥️ **EC2**: {ec2_count} instances ({running} running)\n"
+            response += f"📦 **S3**: {s3_count} buckets\n"
+            response += f"⚡ **Lambda**: {lambda_count} functions\n"
+            response += f"🗄️ **RDS**: {rds_count} databases\n"
+            response += f"\nAll systems operational."
+
+        # Help
+        elif any(w in msg for w in ["help", "what can you do", "commands", "options"]):
+            response = "**Available Commands:**\n\n"
+            response += "**AWS Services:**\n"
+            response += "• `list ec2` - Show EC2 instances\n"
+            response += "• `list s3` - Show S3 buckets\n"
+            response += "• `list lambda` - Show Lambda functions\n"
+            response += "• `list rds` - Show RDS databases\n"
+            response += "• `list dynamo` - Show DynamoDB tables\n"
+            response += "• `list iam` - Show IAM users\n"
+            response += "• `list vpc` - Show VPCs\n"
+            response += "• `list sqs` - Show SQS queues\n"
+            response += "• `list sns` - Show SNS topics\n"
+            response += "• `list ecs` - Show ECS clusters\n"
+            response += "• `list secrets` - Show Secrets Manager\n\n"
+            response += "**AI Analysis:**\n"
+            response += "• `security analysis` - Deep security audit with score\n"
+            response += "• `cost analysis` - Cost optimization report\n"
+            response += "• `architecture review` - Architecture best practices\n"
+            response += "• `health check` - Full infrastructure health report\n"
+            response += "• `analyze <topic>` - AI-powered analysis\n\n"
+            response += "**Actions:**\n"
+            response += "• `stop instance <id>` - Stop an EC2 instance\n"
+            response += "• `start instance <id>` - Start an EC2 instance\n\n"
+            response += "**Info:**\n"
+            response += "• `cost` - Show cost overview\n"
+            response += "• `security` - Show security findings\n"
+            response += "• `status` - Show infrastructure summary\n"
+            response += "• `cloudwatch` - Show monitoring alarms\n"
+
+        # AI Analysis Commands
+        elif any(w in msg for w in ["security analysis", "security audit", "security report", "analyze security"]):
+            tools_used.append("security_analysis")
+            data = await _gather_all_aws_data(request)
+            response = _analyze_security(data)
+
+        elif any(w in msg for w in ["cost analysis", "cost optimization", "cost report", "optimize cost", "analyze cost"]):
+            tools_used.append("cost_analysis")
+            data = await _gather_all_aws_data(request)
+            response = _analyze_cost(data)
+
+        elif any(w in msg for w in ["architecture review", "architecture analysis", "arch review", "design review", "analyze architecture"]):
+            tools_used.append("architecture_review")
+            data = await _gather_all_aws_data(request)
+            response = _analyze_architecture(data)
+
+        elif any(w in msg for w in ["health check", "health report", "full report", "overview report"]):
+            tools_used.append("health_check")
+            data = await _gather_all_aws_data(request)
+            response = _analyze_overall(data)
+
+        elif any(w in msg for w in ["analyze", "analysis", "review", "audit", "assess"]):
+            tools_used.append("smart_analysis")
+            data = await _gather_all_aws_data(request)
+            context = f"EC2: {len(data['ec2'].get('instances',[]))} instances, S3: {len(data['s3'].get('buckets',[]))} buckets, Lambda: {len(data['lambda'].get('functions',[]))} functions, RDS: {len(data['rds'].get('databases',[]))} databases, Security: {len(data['security'].get('findings',[]))} findings"
+
+            # Try Claude first
+            if ANTHROPIC_API_KEY:
+                try:
+                    claude_response = await _claude_chat(message, context)
+                    if claude_response:
+                        response = claude_response
+                        tools_used.append("claude_api")
+                except Exception:
+                    pass
+
+            # Try Ollama second
+            if not response:
+                try:
+                    ollama_response = await _ollama_chat(message, context)
+                    if ollama_response:
+                        response = ollama_response
+                        tools_used.append("ollama_local")
+                except Exception:
+                    pass
+
+            # Fallback to local analysis
+            if not response:
+                response = _analyze_overall(data)
+
+        # Greeting
+        elif any(w in msg for w in ["hello", "hi", "hey", "good morning", "good evening"]):
+            response = "Hello! I'm your DevOps AI Assistant. I can help you manage your AWS infrastructure.\n\n"
+            response += "Try commands like:\n"
+            response += "• `list ec2` - Show EC2 instances\n"
+            response += "• `cost` - Show cost overview\n"
+            response += "• `security` - Show security findings\n"
+            response += "• `help` - See all commands\n"
+
+        # Fallback - Try Claude → Ollama → Local Analysis
+        else:
+            tools_used.append("smart_fallback")
+            data = await _gather_all_aws_data(request)
+            context = f"EC2: {len(data['ec2'].get('instances',[]))} instances, S3: {len(data['s3'].get('buckets',[]))} buckets, Lambda: {len(data['lambda'].get('functions',[]))} functions, RDS: {len(data['rds'].get('databases',[]))} databases, Security: {len(data['security'].get('findings',[]))} findings"
+
+            # Try Claude first (best quality)
+            if ANTHROPIC_API_KEY:
+                try:
+                    claude_response = await _claude_chat(message, context)
+                    if claude_response:
+                        response = claude_response
+                        tools_used.append("claude_api")
+                except Exception:
+                    pass
+
+            # Try Ollama second (fast, local)
+            if not response:
+                try:
+                    ollama_response = await _ollama_chat(message, context)
+                    if ollama_response:
+                        response = ollama_response
+                        tools_used.append("ollama_local")
+                except Exception:
+                    pass
+
+            # Fallback to local analysis
+            if not response:
+                response = _analyze_overall(data)
+
+    except HTTPException as e:
+        response = f"Connection error: {e.detail}\n\nPlease make sure you're connected to AWS. Go to the AWS Dashboard and connect first."
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        error_msg = e.response["Error"]["Message"]
+        response = f"AWS Error ({error_code}): {error_msg}"
+    except Exception as e:
+        response = f"Error: {str(e)}\n\nPlease try again or check your connection."
+
+    return {"response": response, "tools_used": tools_used}
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ export function FeatureCard({ title, description, icon, link }: FeatureCardProps
   return (
     <Link href={link} className="block">
       <motion.div 
-        className="relative p-6 rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden"
+        className="relative p-6 rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden"
         whileHover={{ 
           y: -8,
           boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)",
@@ -34,23 +34,23 @@ export function FeatureCard({ title, description, icon, link }: FeatureCardProps
         />
         
         {/* Subtle background pattern */}
-        <div className="absolute -bottom-16 -right-16 w-32 h-32 rounded-full border-8 border-indigo-100/30 opacity-20" />
+        <div className="absolute -bottom-16 -right-16 w-32 h-32 rounded-full border-8 border-indigo-100/30 dark:border-indigo-900/30 opacity-20" />
         
         <div className="flex items-center mb-4 relative z-10">
           <motion.div 
-            className="mr-4 p-3 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center border border-indigo-100 shadow-sm"
+            className="mr-4 p-3 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border border-indigo-100 dark:border-indigo-800/50 shadow-sm"
             whileHover={{ 
               scale: 1.1,
               background: "linear-gradient(to bottom right, rgba(238, 242, 255, 1), rgba(219, 234, 254, 1))" 
             }}
           >
-            <span className="text-indigo-600">
+            <span className="text-indigo-600 dark:text-indigo-400">
               {icon}
             </span>
           </motion.div>
           
           <motion.h3 
-            className="text-lg font-semibold text-gray-800"
+            className="text-lg font-semibold text-gray-800 dark:text-gray-100"
             initial={{ opacity: 1 }}
             whileHover={{ 
               background: "linear-gradient(to right, #4f46e5, #8b5cf6, #3b82f6)",
@@ -63,11 +63,11 @@ export function FeatureCard({ title, description, icon, link }: FeatureCardProps
           </motion.h3>
         </div>
         
-        <p className="text-gray-600 ml-1 relative z-10">{description}</p>
+        <p className="text-gray-600 dark:text-gray-400 ml-1 relative z-10">{description}</p>
         
         {/* Animated arrow on hover */}
         <motion.div 
-          className="mt-4 text-indigo-600 text-sm font-medium flex items-center"
+          className="mt-4 text-indigo-600 dark:text-indigo-400 text-sm font-medium flex items-center"
           initial={{ opacity: 0.8, x: 0 }}
           whileHover={{ opacity: 1, x: 4 }}
         >

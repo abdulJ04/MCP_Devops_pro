@@ -74,7 +74,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
       role: 'assistant', 
       content: agentType === 'ci-cd' 
         ? 'Hello! I\'m your CI/CD AI Assistant. I can help you manage workflows, clone repositories, and optimize your pipelines. Try asking me to "clone a GitHub repository" or "start the Development MCP server". 🚀'
-        : 'Hello! I\'m your DevOps AI Assistant. I can help you with text, images, videos, and files. How can I assist you today? 🚀',
+        : 'Hello! I\'m your DevOps AI Assistant.\n\n**Quick Commands:**\n• `list ec2` - Show EC2 instances\n• `list s3` - Show S3 buckets\n• `status` - Infrastructure overview\n• `security analysis` - Deep security audit\n• `cost analysis` - Cost optimization\n• `architecture review` - Best practices\n• `health check` - Full health report\n• `help` - All commands\n\nHow can I assist you? 🚀',
       timestamp: new Date() 
     }
   ]);
@@ -116,7 +116,9 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
         };
 
         recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error('Speech recognition error:', event.error);
+          if (event.error !== 'not-allowed' && event.error !== 'no-speech') {
+            console.warn('Speech recognition:', event.error);
+          }
           setIsListening(false);
         };
 
@@ -276,7 +278,6 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
     e.preventDefault();
     if (!input.trim() && attachments.length === 0) return;
 
-    // Add user message
     const userMessage: Message = { 
       role: 'user', 
       content: input || 'Sent attachments',
@@ -289,52 +290,50 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
     setAttachments([]);
     setLoading(true);
 
-    // Simulate AI response with multi-modal support
-    setTimeout(() => {
-      // Generate contextual AI response
-      let aiContent = '';
-      const hasImages = userMessage.attachments?.some(att => att.type === 'image');
-      const hasVideos = userMessage.attachments?.some(att => att.type === 'video');
-      const hasFiles = userMessage.attachments?.some(att => att.type === 'file');
+    const userText = userMessage.content;
 
-      if (hasImages) {
-        aiContent = '📸 I\'ve analyzed the images you provided. Here\'s what I found:\n\n• Image quality: High resolution\n• Content detected: DevOps dashboard, metrics graphs\n• Recommendation: Your metrics show healthy system performance with 99.8% uptime.\n\nWould you like me to generate a detailed report?';
-      } else if (hasVideos) {
-        aiContent = '🎥 I\'ve processed your video file. Based on the visual analysis:\n\n• Duration: Detected deployment process\n• Key events: Build, test, and deploy stages\n• Performance: Identified a 15% optimization opportunity in the build stage.\n\nI can create a visual breakdown if needed!';
-      } else if (hasFiles) {
-        aiContent = '📄 I\'ve reviewed your files. Here\'s the summary:\n\n• Configuration files look good\n• Detected potential improvements in resource allocation\n• Security scan: No vulnerabilities found\n\nShall I proceed with the recommended optimizations?';
+    try {
+      const res = await fetch('/api/v1/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userText }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.response) {
+        const aiMessage: Message = { 
+          role: 'assistant', 
+          content: data.response,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        if (voiceEnabled) {
+          setTimeout(() => speakText(data.response), 500);
+        }
       } else {
-        aiContent = generateContextualResponse(input);
+        const errorMsg = data.error || `Server error (${res.status})`;
+        const aiMessage: Message = { 
+          role: 'assistant', 
+          content: `⚠️ ${errorMsg}\n\nMake sure the backend is running: \`cd aws-mcp-server && python3 server.py\``,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, aiMessage]);
       }
-
-      // Sometimes include media in AI response
-      const aiAttachments: MediaAttachment[] = [];
-      if (Math.random() > 0.6 && (hasImages || hasFiles)) {
-        aiAttachments.push({
-          id: Math.random().toString(36).substr(2, 9),
-          type: 'image',
-          name: 'analysis-report.png',
-          url: '/api/placeholder/400/300',
-          preview: '/api/placeholder/400/300',
-          size: '245 KB'
-        });
-      }
-
+    } catch (err: any) {
+      console.error('Chat API error:', err);
       const aiMessage: Message = { 
         role: 'assistant', 
-        content: aiContent,
+        content: `⚠️ Cannot connect to backend.\n\nError: ${err.message || 'Unknown error'}\n\nMake sure both servers are running:\n1. \`cd aws-mcp-server && python3 server.py\`\n2. \`npm run dev\``,
         timestamp: new Date(),
-        attachments: aiAttachments.length > 0 ? aiAttachments : undefined
       };
-      
       setMessages(prev => [...prev, aiMessage]);
-      setLoading(false);
-      
-      // Speak the AI response if voice is enabled
       if (voiceEnabled) {
-        setTimeout(() => speakText(aiContent), 500);
+        setTimeout(() => speakText(aiMessage.content), 500);
       }
-    }, 2000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateContextualResponse = (userInput: string): string => {
@@ -420,7 +419,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
     switch (attachment.type) {
       case 'image':
         return (
-          <div className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+          <div className="relative group rounded-lg overflow-hidden border border-[#3a3d48] bg-[#2a2d38]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src={attachment.preview || attachment.url} 
@@ -441,7 +440,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
       
       case 'video':
         return (
-          <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+          <div className="relative rounded-lg overflow-hidden border border-[#3a3d48] bg-[#2a2d38]">
             <div className="w-full h-40 bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
               <BsCameraVideo size={48} className="text-white/80" />
             </div>
@@ -454,7 +453,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
       
       case 'file':
         return (
-          <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-[#3a3d48] bg-[#2a2d38] hover:bg-[#3a3d48] transition-colors">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <BsFileEarmark className="text-white" size={20} />
             </div>
@@ -503,7 +502,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
         height: isMinimized ? '60px' : '720px'
       }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
-      className="fixed bottom-6 right-6 z-50 w-[540px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+      className="fixed bottom-6 right-6 z-50 w-[540px] bg-[#1e2128] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-[#3a3d48]"
       style={{ maxHeight: '95vh' }}
     >
       {/* Header */}
@@ -571,7 +570,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
           {/* Messages Area */}
           <div 
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white chat-widget-scrollbar"
+            className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#1e2128] to-[#252830] chat-widget-scrollbar"
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -610,7 +609,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
                       className={`rounded-2xl p-3 shadow-sm ${
                         msg.role === 'user'
                           ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-tr-sm'
-                          : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
+                          : 'bg-[#2a2d38] border border-[#3a3d48] text-gray-200 rounded-tl-sm'
                       }`}
                     >
                       {msg.content && (
@@ -656,7 +655,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
                 animate={{ opacity: 1 }}
                 className="flex justify-start mb-4"
               >
-                <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm p-4 shadow-sm">
+                <div className="bg-[#2a2d38] border border-[#3a3d48] rounded-2xl rounded-tl-sm p-4 shadow-sm">
                   <div className="flex items-center gap-2">
                     <BsRobot className="text-indigo-600" size={16} />
                     <div className="flex space-x-1">
@@ -683,7 +682,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
 
           {/* Attachments Preview */}
           {attachments.length > 0 && (
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+            <div className="px-4 py-2 bg-[#252830] border-t border-[#3a3d48]">
               <div className="flex items-center gap-2 mb-2">
                 <BsPaperclip size={14} className="text-gray-500" />
                 <span className="text-xs font-medium text-gray-600">
@@ -693,14 +692,14 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
               <div className="flex flex-wrap gap-2">
                 {attachments.map(att => (
                   <div key={att.id} className="relative group">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm">
-                      {att.type === 'image' && <BsImage className="text-indigo-600" size={16} />}
-                      {att.type === 'video' && <BsCameraVideo className="text-purple-600" size={16} />}
-                      {att.type === 'file' && <BsFileEarmark className="text-blue-600" size={16} />}
-                      <span className="text-xs text-gray-700 max-w-[100px] truncate">{att.name}</span>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-[#2a2d38] rounded-lg border border-[#3a3d48] text-sm">
+                      {att.type === 'image' && <BsImage className="text-indigo-400" size={16} />}
+                      {att.type === 'video' && <BsCameraVideo className="text-purple-400" size={16} />}
+                      {att.type === 'file' && <BsFileEarmark className="text-blue-400" size={16} />}
+                      <span className="text-xs text-gray-300 max-w-[100px] truncate">{att.name}</span>
                       <button
                         onClick={() => removeAttachment(att.id)}
-                        className="ml-1 p-1 hover:bg-gray-100 rounded transition-colors"
+                        className="ml-1 p-1 hover:bg-[#3a3d48] rounded transition-colors"
                       >
                         <BsTrash size={12} className="text-red-500" />
                       </button>
@@ -712,7 +711,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
           )}
 
           {/* Input Area */}
-          <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-100">
+          <form onSubmit={handleSend} className="p-4 bg-[#1e2128] border-t border-[#3a3d48]">
             <div className="flex items-end gap-2">
               {/* Attachment and Voice buttons */}
               <div className="flex gap-1 pb-2">
@@ -727,10 +726,10 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
+                  className="p-2 hover:bg-[#3a3d48] rounded-lg transition-colors group"
                   title="Attach files"
                 >
-                  <BsPaperclip size={20} className="text-gray-500 group-hover:text-indigo-600" />
+                  <BsPaperclip size={20} className="text-gray-400 group-hover:text-indigo-400" />
                 </button>
                 {/* Voice Input Button */}
                 <button
@@ -739,7 +738,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
                   className={`p-2 rounded-lg transition-all group relative ${
                     isListening 
                       ? 'bg-red-500 text-white animate-pulse' 
-                      : 'hover:bg-gray-100 text-gray-500'
+                      : 'hover:bg-[#3a3d48] text-gray-400'
                   }`}
                   title={isListening ? "Stop recording" : "Voice input"}
                   disabled={loading}
@@ -767,7 +766,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
                     }
                   }}
                   placeholder="Type a message... (Shift+Enter for new line)"
-                  className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                  className="w-full px-4 py-3 pr-12 bg-[#2a2d38] border border-[#3a3d48] rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm text-gray-200 placeholder-gray-500"
                   rows={1}
                   style={{ minHeight: '44px', maxHeight: '120px' }}
                   disabled={loading}
@@ -781,7 +780,7 @@ export default function MultiModalChat({ onWorkflowCreate, onWorkflowUpdate, age
                 className={`p-3 rounded-xl transition-all ${
                   input.trim() || attachments.length > 0
                     ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#3a3d48] text-gray-500 cursor-not-allowed'
                 }`}
               >
                 <BsSend size={18} />

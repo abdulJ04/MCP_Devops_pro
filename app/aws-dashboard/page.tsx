@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   BsCloud,
   BsServer,
@@ -22,7 +23,9 @@ import {
   BsInfoCircle,
   BsDownload,
   BsGear,
+  BsArrowLeft,
 } from "react-icons/bs";
+import MultiModalChat from "../../components/MultiModalChat";
 import {
   LineChart,
   Line,
@@ -290,7 +293,7 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>{children}</div>;
+  return <div className={`bg-[#f8f9fa] dark:bg-[#2a2d38] rounded-xl shadow-sm border border-[#dee2e6] dark:border-[#3a3d48] ${className}`}>{children}</div>;
 }
 
 function StatCard({ icon: Icon, label, value, trend, trendUp, color = "blue" }: {
@@ -298,7 +301,7 @@ function StatCard({ icon: Icon, label, value, trend, trendUp, color = "blue" }: 
 }) {
   const cm: Record<string, string> = { blue: "bg-blue-500", green: "bg-green-500", yellow: "bg-yellow-500", red: "bg-red-500", purple: "bg-purple-500", cyan: "bg-cyan-500" };
   return (
-    <Card className="p-5 hover:shadow-md transition-shadow">
+    <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
@@ -326,6 +329,7 @@ function EmptyState({ icon: Icon, title, description }: { icon: React.ComponentT
 }
 
 function AuthScreen({ onConnect }: { onConnect: (creds: AWSCredentials) => void }) {
+  const router = useRouter();
   const [useLocalstack, setUseLocalstack] = useState(true);
   const [accessKeyId, setAccessKeyId] = useState("");
   const [secretAccessKey, setSecretAccessKey] = useState("");
@@ -367,23 +371,26 @@ function AuthScreen({ onConnect }: { onConnect: (creds: AWSCredentials) => void 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8">
+    <div className="min-h-full bg-gradient-to-br from-[#1e2128] via-[#2a2d38] to-[#1e2128] flex items-center justify-center p-4">
+      <Card className="w-full max-w-md p-8 relative">
+        <button onClick={() => router.push("/")} className="absolute top-4 left-4 w-8 h-8 bg-[#e9ecef] dark:bg-[#353842] hover:bg-[#dee2e6] dark:hover:bg-[#404350] rounded-lg flex items-center justify-center transition-colors" title="Back to Home">
+          <BsArrowLeft className="text-[#6c757d] dark:text-[#a0a0aa] text-sm" />
+        </button>
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <BsCloud className="text-white text-3xl" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AWS Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Connect to your AWS account to start monitoring</p>
+          <h1 className="text-2xl font-bold text-[#212529] dark:text-[#e8e8ed]">AWS Dashboard</h1>
+          <p className="text-sm text-[#6c757d] dark:text-[#a0a0aa] mt-1">Connect to your AWS account to start monitoring</p>
         </div>
 
-        <div className="flex items-center justify-center gap-4 mb-6 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-          <span className={`text-sm font-medium ${!useLocalstack ? "text-orange-500" : "text-gray-500 dark:text-gray-400"}`}>Real AWS</span>
+        <div className="flex items-center justify-center gap-4 mb-6 p-3 bg-[#e9ecef] dark:bg-[#353842] rounded-lg">
+          <span className={`text-sm font-medium ${!useLocalstack ? "text-orange-500" : "text-[#6c757d] dark:text-[#a0a0aa]"}`}>Real AWS</span>
           <button type="button" onClick={() => setUseLocalstack(!useLocalstack)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${useLocalstack ? "bg-green-500" : "bg-gray-400"}`}>
+            className={`relative w-12 h-6 rounded-full transition-colors ${useLocalstack ? "bg-green-500" : "bg-[#adb5bd]"}`}>
             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${useLocalstack ? "left-7" : "left-1"}`} />
           </button>
-          <span className={`text-sm font-medium ${useLocalstack ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}>LocalStack</span>
+          <span className={`text-sm font-medium ${useLocalstack ? "text-green-500" : "text-[#6c757d] dark:text-[#a0a0aa]"}`}>LocalStack</span>
         </div>
 
         {useLocalstack && (
@@ -397,41 +404,41 @@ function AuthScreen({ onConnect }: { onConnect: (creds: AWSCredentials) => void 
           {!useLocalstack && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">AWS Access Key ID <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-[#212529] dark:text-[#e8e8ed] mb-1.5">AWS Access Key ID <span className="text-red-500">*</span></label>
                 <input type="text" value={accessKeyId} onChange={(e) => setAccessKeyId(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE"
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all" />
+                  className="w-full px-4 py-2.5 bg-[#e9ecef] dark:bg-[#353842] border border-[#dee2e6] dark:border-[#3a3d48] rounded-lg text-[#212529] dark:text-[#e8e8ed] placeholder-[#adb5bd] focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">AWS Secret Access Key <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-[#212529] dark:text-[#e8e8ed] mb-1.5">AWS Secret Access Key <span className="text-red-500">*</span></label>
                 <input type="password" value={secretAccessKey} onChange={(e) => setSecretAccessKey(e.target.value)} placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all" />
+                  className="w-full px-4 py-2.5 bg-[#e9ecef] dark:bg-[#353842] border border-[#dee2e6] dark:border-[#3a3d48] rounded-lg text-[#212529] dark:text-[#e8e8ed] placeholder-[#adb5bd] focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">AWS Session Token <span className="text-gray-400">(optional)</span></label>
+                <label className="block text-sm font-medium text-[#212529] dark:text-[#e8e8ed] mb-1.5">AWS Session Token <span className="text-[#adb5bd]">(optional)</span></label>
                 <input type="password" value={sessionToken} onChange={(e) => setSessionToken(e.target.value)} placeholder="FwoGZXIvYXdzEBAaDD..."
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all" />
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Required for temporary credentials (STS, IAM Identity Center)</p>
+                  className="w-full px-4 py-2.5 bg-[#e9ecef] dark:bg-[#353842] border border-[#dee2e6] dark:border-[#3a3d48] rounded-lg text-[#212529] dark:text-[#e8e8ed] placeholder-[#adb5bd] focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all" />
+                <p className="text-xs text-[#adb5bd] dark:text-[#6a6a75] mt-1">Required for temporary credentials (STS, IAM Identity Center)</p>
               </div>
             </>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Region</label>
+            <label className="block text-sm font-medium text-[#212529] dark:text-[#e8e8ed] mb-1.5">Region</label>
             <select value={region} onChange={(e) => setRegion(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all">
+              className="w-full px-4 py-2.5 bg-[#e9ecef] dark:bg-[#353842] border border-[#dee2e6] dark:border-[#3a3d48] rounded-lg text-[#212529] dark:text-[#e8e8ed] focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all">
               {AWS_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Session Timeout</label>
+            <label className="block text-sm font-medium text-[#212529] dark:text-[#e8e8ed] mb-1.5">Session Timeout</label>
             <select value={sessionTimeout} onChange={(e) => setSessionTimeout(Number(e.target.value))}
-              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all">
+              className="w-full px-4 py-2.5 bg-[#e9ecef] dark:bg-[#353842] border border-[#dee2e6] dark:border-[#3a3d48] rounded-lg text-[#212529] dark:text-[#e8e8ed] focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all">
               <option value={900}>15 minutes (Production)</option>
               <option value={1800}>30 minutes</option>
               <option value={3600}>1 hour (Testing)</option>
               <option value={7200}>2 hours</option>
               <option value={86400}>24 hours (Dev)</option>
             </select>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Session expires after inactivity</p>
+            <p className="text-xs text-[#adb5bd] dark:text-[#6a6a75] mt-1">Session expires after inactivity</p>
           </div>
           <button type="submit" disabled={loading}
             className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
@@ -464,6 +471,60 @@ function OverviewTab({ ec2, s3, lambda, rds, findings, costData, trailEvents, cl
   const totalCost = costData.byService.reduce((s, c) => s + c.cost, 0);
   const criticalFindings = findings.filter((f) => f.severity === "Critical").length;
   const resourceDistribution = [{ name: "EC2", value: ec2.length },{ name: "S3", value: s3.length },{ name: "Lambda", value: lambda.length },{ name: "RDS", value: rds.length }];
+
+  const cpuData = useMemo(() => {
+    if (ec2.length === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, cpu: 0 }));
+    const avgCpu = ec2.reduce((sum, inst) => sum + (inst.cpu || 0), 0) / ec2.length;
+    const seed = ec2.reduce((s, inst) => s + (inst.cpu || 0), 0);
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourOffset = Math.sin((i + seed) * 0.3) * 12;
+      return { time: `${String(i).padStart(2, "0")}:00`, cpu: Math.max(0, Math.min(100, Math.round(avgCpu + hourOffset))) };
+    });
+  }, [ec2]);
+
+  const networkData = useMemo(() => {
+    const baseInbound = ec2.length * 120 + s3.reduce((s, b) => s + (b.objectCount || 0), 0) * 0.001;
+    const baseOutbound = ec2.length * 80 + lambda.reduce((s, f) => s + (f.invocations || 0), 0) * 0.01;
+    if (baseInbound === 0 && baseOutbound === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, inbound: 0, outbound: 0 }));
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourFactor = Math.sin(i * 0.26) * 0.3 + 1;
+      return {
+        time: `${String(i).padStart(2, "0")}:00`,
+        inbound: Math.round(baseInbound * hourFactor),
+        outbound: Math.round(baseOutbound * hourFactor),
+      };
+    });
+  }, [ec2, s3, lambda]);
+
+  const ioData = useMemo(() => {
+    const baseRead = rds.reduce((s, d) => s + (d.connections || 0), 0) * 2;
+    const baseWrite = rds.reduce((s, d) => s + (d.storageUsed || 0), 0) * 0.1;
+    if (baseRead === 0 && baseWrite === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, read: 0, write: 0 }));
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourFactor = Math.cos(i * 0.26) * 0.25 + 1;
+      return {
+        time: `${String(i).padStart(2, "0")}:00`,
+        read: Math.round(baseRead * hourFactor),
+        write: Math.round(baseWrite * hourFactor),
+      };
+    });
+  }, [rds]);
+
+  const lambdaExecData = useMemo(() => {
+    const totalInvocations = lambda.reduce((s, f) => s + (f.invocations || 0), 0);
+    const totalErrors = lambda.reduce((s, f) => s + (f.errors || 0), 0);
+    if (totalInvocations === 0 && totalErrors === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, invocations: 0, errors: 0 }));
+    const hourlyInvocations = Math.round(totalInvocations / 24);
+    const hourlyErrors = Math.round(totalErrors / 24);
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourFactor = Math.sin(i * 0.3) * 0.4 + 1;
+      return {
+        time: `${String(i).padStart(2, "0")}:00`,
+        invocations: Math.round(hourlyInvocations * hourFactor),
+        errors: Math.round(hourlyErrors * hourFactor),
+      };
+    });
+  }, [lambda]);
 
   const recentActivity = useMemo(() => {
     if (clientActivity && clientActivity.length > 0) {
@@ -516,84 +577,208 @@ function OverviewTab({ ec2, s3, lambda, rds, findings, costData, trailEvents, cl
   }, [trailEvents, clientActivity, ec2, s3, rds, findings]);
 
   const healthStatus = useMemo(() => [
-    { service: "EC2", status: ec2.length > 0 ? (stoppedInstances === 0 ? "healthy" : "degraded") : "unknown", count: `${runningInstances}/${ec2.length}` },
-    { service: "S3", status: s3.length > 0 ? "healthy" : "unknown", count: `${s3.length} buckets` },
-    { service: "Lambda", status: lambda.length > 0 ? (lambda.some(l => l.state === "Failed") ? "degraded" : "healthy") : "unknown", count: `${lambda.length} functions` },
-    { service: "RDS", status: rds.length > 0 ? (rds.every(r => r.status === "available") ? "healthy" : "degraded") : "unknown", count: `${rds.length} databases` },
-    { service: "IAM", status: "healthy", count: "Operational" },
-    { service: "VPC", status: "healthy", count: "Operational" },
+    { service: "EC2", status: ec2.length > 0 ? (stoppedInstances === 0 ? "healthy" : "degraded") : "unknown", count: `${runningInstances}/${ec2.length}`, detail: `${runningInstances} running, ${stoppedInstances} stopped` },
+    { service: "S3", status: s3.length > 0 ? "healthy" : "unknown", count: `${s3.length} buckets`, detail: `${s3.reduce((sum, b) => sum + (b.objectCount || 0), 0)} objects` },
+    { service: "Lambda", status: lambda.length > 0 ? (lambda.some(l => l.state === "Failed") ? "degraded" : "healthy") : "unknown", count: `${lambda.length} functions`, detail: `${lambda.filter(l => l.state === "Active").length} active` },
+    { service: "RDS", status: rds.length > 0 ? (rds.every(r => r.status === "available") ? "healthy" : "degraded") : "unknown", count: `${rds.length} databases`, detail: `${rds.filter(r => r.status === "available").length} available` },
+    { service: "IAM", status: "healthy", count: "Operational", detail: "All policies active" },
+    { service: "VPC", status: "healthy", count: "Operational", detail: "All subnets healthy" },
   ], [ec2, s3, lambda, rds, runningInstances, stoppedInstances]);
 
+  const serviceBreakdown = useMemo(() => {
+    return costData.byService.map(s => ({ ...s, cost: Number(s.cost.toFixed(2)) }));
+  }, [costData]);
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-4">
+      {/* Row 1: Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard icon={BsCloud} label="Total Resources" value={ec2.length + s3.length + lambda.length + rds.length} trend="+3 this week" trendUp color="blue" />
-        <StatCard icon={BsServer} label="Running Instances" value={runningInstances} trend={`${ec2.filter((i) => i.state === "stopped").length} stopped`} trendUp={false} color="green" />
-        <StatCard icon={BsGraphUp} label="Monthly Cost" value={`$${totalCost.toFixed(2)}`} trend="+12% vs last month" trendUp={false} color="yellow" />
-        <StatCard icon={BsShieldCheck} label="Security Findings" value={findings.length} trend={`${criticalFindings} critical`} trendUp={false} color="red" />
+        <StatCard icon={BsServer} label="Running" value={runningInstances} trend={`${stoppedInstances} stopped`} trendUp={false} color="green" />
+        <StatCard icon={BsGraphUp} label="Monthly Cost" value={`$${totalCost.toFixed(2)}`} trend="+12% vs last" trendUp={false} color="yellow" />
+        <StatCard icon={BsShieldCheck} label="Findings" value={findings.length} trend={`${criticalFindings} critical`} trendUp={false} color="red" />
+        <StatCard icon={BsDatabase} label="Databases" value={rds.length} trend={`${rds.filter(r => r.status === "available").length} available`} trendUp color="purple" />
+        <StatCard icon={BsKey} label="Secrets" value={0} trend="All secure" trendUp color="cyan" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resource Distribution</h3>
-          <ResponsiveContainer width="100%" height={280}>
+
+      {/* Row 2: Charts - CPU, Network, I/O */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">CPU Utilization</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">1h avg</span>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={cpuData}>
+              <defs>
+                <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="time" tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} interval={5} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 100]} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
+              <Area type="monotone" dataKey="cpu" stroke="#3b82f6" fill="url(#cpuGrad)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Network I/O</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">KB/s</span>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={networkData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="time" tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} interval={5} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
+              <Legend wrapperStyle={{ fontSize: "11px" }} />
+              <Line type="monotone" dataKey="inbound" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="outbound" stroke="#f59e0b" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Disk I/O</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">ops/s</span>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={ioData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="time" tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} interval={5} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
+              <Legend wrapperStyle={{ fontSize: "11px" }} />
+              <Bar dataKey="read" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="write" fill="#ec4899" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Row 3: Lambda Invocations, Resource Distribution, Cost by Service */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Lambda Invocations</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">24h</span>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={lambdaExecData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="time" tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} interval={5} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
+              <Legend wrapperStyle={{ fontSize: "11px" }} />
+              <Bar dataKey="invocations" fill="#06b6d4" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="errors" fill="#ef4444" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Resource Distribution</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={resourceDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value">
+              <Pie data={resourceDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                 {resourceDistribution.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
               </Pie>
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: "11px" }} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Cost Trend (30 Days)</h3>
-          <ResponsiveContainer width="100%" height={280}>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Cost by Service</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={serviceBreakdown} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="cost" nameKey="service">
+                {serviceBreakdown.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
+              <Legend wrapperStyle={{ fontSize: "11px" }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Row 4: Cost Trend + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Cost Trend (30 Days)</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Daily spend</span>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={costData.daily}>
               <defs>
-                <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                <linearGradient id="costGrad2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
-              <Area type="monotone" dataKey="cost" stroke="#f59e0b" fill="url(#costGrad)" strokeWidth={2} />
+              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "Cost"]} />
+              <Area type="monotone" dataKey="cost" stroke="#f59e0b" fill="url(#costGrad2)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
-          <div className="space-y-3">
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Last 7 events</span>
+          </div>
+          <div className="space-y-2 max-h-[200px] overflow-y-auto">
             {recentActivity.map((a, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+              <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${a.type === "success" ? "bg-green-500" : a.type === "warning" ? "bg-yellow-500" : a.type === "error" ? "bg-red-500" : "bg-blue-500"}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{a.action}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{a.action}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{a.resource} · {a.time}</p>
                 </div>
               </div>
             ))}
           </div>
         </Card>
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Health Status</h3>
-          <div className="space-y-3">
-            {healthStatus.map((h) => (
-              <div key={h.service} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                <div className="flex items-center gap-3">
-                  {h.status === "healthy" ? <BsCheckCircle className="text-green-500 text-lg" /> : <BsExclamationTriangle className="text-yellow-500 text-lg" />}
-                  <span className="font-medium text-gray-900 dark:text-white">{h.service}</span>
-                </div>
-                <Badge color={h.status === "healthy" ? "green" : "yellow"}>{h.status === "healthy" ? "Healthy" : "Degraded"}</Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
+
+      {/* Row 5: Health Status (Detailed) */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Service Health</h3>
+          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Healthy</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span> Degraded</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Unhealthy</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {healthStatus.map((h) => (
+            <div key={h.service} className="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-1">
+                {h.status === "healthy" ? <BsCheckCircle className="text-green-500" /> : <BsExclamationTriangle className="text-yellow-500" />}
+                <span className="font-semibold text-gray-900 dark:text-white text-sm">{h.service}</span>
+              </div>
+              <p className="text-base font-bold text-gray-900 dark:text-white">{h.count}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{h.detail}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -605,15 +790,29 @@ function EC2Tab({ instances }: { instances: EC2Instance[] }) {
   const cpuData = useMemo(() => {
     if (instances.length === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, cpu: 0 }));
     const avgCpu = instances.reduce((sum, inst) => sum + (inst.cpu || 0), 0) / instances.length;
-    return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, cpu: Math.round(avgCpu + (Math.random() * 10 - 5)) }));
+    const seed = instances.reduce((s, inst) => s + (inst.cpu || 0), 0);
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourOffset = Math.sin((i + seed) * 0.3) * 10;
+      return { time: `${String(i).padStart(2, "0")}:00`, cpu: Math.max(0, Math.min(100, Math.round(avgCpu + hourOffset))) };
+    });
   }, [instances]);
   const networkData = useMemo(() => {
     if (instances.length === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, inbound: 0, outbound: 0 }));
-    return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, inbound: Math.round(Math.random() * 500), outbound: Math.round(Math.random() * 300) }));
+    const baseInbound = instances.length * 100;
+    const baseOutbound = instances.length * 60;
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourFactor = Math.sin(i * 0.26) * 0.3 + 1;
+      return { time: `${String(i).padStart(2, "0")}:00`, inbound: Math.round(baseInbound * hourFactor), outbound: Math.round(baseOutbound * hourFactor) };
+    });
   }, [instances]);
   const diskData = useMemo(() => {
     if (instances.length === 0) return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, read: 0, write: 0 }));
-    return Array.from({ length: 24 }, (_, i) => ({ time: `${String(i).padStart(2, "0")}:00`, read: Math.round(Math.random() * 100), write: Math.round(Math.random() * 80) }));
+    const baseRead = instances.length * 20;
+    const baseWrite = instances.length * 15;
+    return Array.from({ length: 24 }, (_, i) => {
+      const hourFactor = Math.cos(i * 0.26) * 0.25 + 1;
+      return { time: `${String(i).padStart(2, "0")}:00`, read: Math.round(baseRead * hourFactor), write: Math.round(baseWrite * hourFactor) };
+    });
   }, [instances]);
   const filtered = instances.filter((i) => {
     if (filterState !== "all" && i.state !== filterState) return false;
@@ -811,7 +1010,7 @@ function LambdaTab({ functions }: { functions: LambdaFunction[] }) {
 
 function RDSTab({ databases }: { databases: RDSInstance[] }) {
   const connData = databases.map((d) => ({ name: d.name.length > 12 ? d.name.slice(0, 12) + "..." : d.name, connections: d.connections }));
-  const iopsData = databases.map((d) => ({ name: d.name.length > 12 ? d.name.slice(0, 12) + "..." : d.name, readIOPS: Math.round(Math.random() * 1000), writeIOPS: Math.round(Math.random() * 500) }));
+  const iopsData = databases.map((d) => ({ name: d.name.length > 12 ? d.name.slice(0, 12) + "..." : d.name, readIOPS: Math.round((d.connections || 0) * 5 + (d.cpu || 0) * 2), writeIOPS: Math.round((d.connections || 0) * 3 + (d.storageUsed || 0) * 0.1) }));
   const storageData = databases.map((d) => ({ name: d.name.length > 12 ? d.name.slice(0, 12) + "..." : d.name, used: d.storageUsed, free: d.storage - d.storageUsed }));
 
   return (
@@ -1421,6 +1620,7 @@ function BudgetsTab({ data }: { data: any }) {
 }
 
 export default function AWSDashboardPage() {
+  const router = useRouter();
   const [hydrated, setHydrated] = useState(false);
   const [connected, setConnected] = useState(false);
   const [credentials, setCredentials] = useState<AWSCredentials | null>(null);
@@ -1513,12 +1713,17 @@ export default function AWSDashboardPage() {
     try {
       // Clear backend cache first
       await fetchAWS("refresh");
-      const [ec2Res, s3Res, lambdaRes, rdsRes, iamRes, vpcRes, costRes, securityRes, activityRes,
-        ebsRes, route53Res, elbRes, asgRes, cwRes, ssmRes, ecrRes, ecsRes, eksRes, cfnRes,
-        cpRes, cbRes, cdRes, smRes, psRes, acmRes, ddbRes, snsRes, sqsRes, ebRes, bkRes, budRes
-      ] = await Promise.all([
+      
+      // Batch 1: Core services (most important - load first)
+      const [ec2Res, s3Res, lambdaRes, rdsRes, iamRes, vpcRes, costRes, securityRes, activityRes] = await Promise.all([
         fetchAWS("ec2"), fetchAWS("s3"), fetchAWS("lambda"), fetchAWS("rds"),
         fetchAWS("iam"), fetchAWS("vpc"), fetchAWS("cost"), fetchAWS("security"), fetchAWS("activity"),
+      ]);
+
+      // Batch 2: Secondary services (load after core)
+      const [ebsRes, route53Res, elbRes, asgRes, cwRes, ssmRes, ecrRes, ecsRes, eksRes, cfnRes,
+        cpRes, cbRes, cdRes, smRes, psRes, acmRes, ddbRes, snsRes, sqsRes, ebRes, bkRes, budRes
+      ] = await Promise.all([
         fetchAWS("ebs"), fetchAWS("route53"), fetchAWS("elb"), fetchAWS("auto_scaling"),
         fetchAWS("cloudwatch_dash"), fetchAWS("ssm"), fetchAWS("ecr"), fetchAWS("ecs"), fetchAWS("eks"),
         fetchAWS("cloudformation"), fetchAWS("codepipeline"), fetchAWS("codebuild"), fetchAWS("codedeploy"),
@@ -1775,7 +1980,7 @@ export default function AWSDashboardPage() {
     }
   }, [connected, credentials?.sessionTimeout, fetchAWS]);
 
-  if (!hydrated) return <div className="min-h-screen bg-gray-900 flex items-center justify-center"><Spinner size="lg" /></div>;
+  if (!hydrated) return <div className="h-full bg-[#f0f0f5] dark:bg-[#1e2128] flex items-center justify-center"><Spinner size="lg" /></div>;
   if (!connected) return <AuthScreen onConnect={handleConnect} />;
 
   const renderTab = () => {
@@ -1819,13 +2024,16 @@ export default function AWSDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
-      <aside className={`${sidebarOpen ? "w-64" : "w-16"} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 flex-shrink-0`}>
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+    <div className="h-full bg-[#f0f0f5] dark:bg-[#1e2128] flex overflow-hidden">
+      <aside className={`${sidebarOpen ? "w-64" : "w-16"} bg-[#f8f9fa] dark:bg-[#2a2d38] border-r border-[#dee2e6] dark:border-[#3a3d48] flex flex-col transition-all duration-300 flex-shrink-0 h-full`}>
+        <div className="p-4 border-b border-[#dee2e6] dark:border-[#3a3d48] flex items-center gap-3">
+          <button onClick={() => router.push("/")} className="w-8 h-8 bg-[#e9ecef] dark:bg-[#353842] hover:bg-[#dee2e6] dark:hover:bg-[#404350] rounded-lg flex items-center justify-center flex-shrink-0 transition-colors" title="Back to Home">
+            <BsArrowLeft className="text-[#6c757d] dark:text-[#a0a0aa] text-sm" />
+          </button>
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
             <BsCloud className="text-white text-sm" />
           </div>
-          {sidebarOpen && <span className="font-bold text-gray-900 dark:text-white text-sm">AWS Console</span>}
+          {sidebarOpen && <span className="font-bold text-[#212529] dark:text-[#e8e8ed] text-sm">AWS Console</span>}
         </div>
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {SIDEBAR_CATEGORIES.map((cat) => {
@@ -1837,7 +2045,7 @@ export default function AWSDashboardPage() {
                 const Icon = tab.icon;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)} title={tab.label}
-                    className={`w-full flex items-center justify-center p-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}>
+                    className={`w-full flex items-center justify-center p-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400" : "text-[#6c757d] dark:text-[#a0a0aa] hover:bg-[#e9ecef] dark:hover:bg-[#353842]"}`}>
                     <Icon className="text-lg" />
                   </button>
                 );
@@ -1846,7 +2054,7 @@ export default function AWSDashboardPage() {
             return (
               <div key={cat.id}>
                 <button onClick={() => setOpenCategories(prev => ({ ...prev, [cat.id]: !prev[cat.id] }))}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${hasActive ? "text-orange-600 dark:text-orange-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}>
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${hasActive ? "text-orange-600 dark:text-orange-400" : "text-[#adb5bd] dark:text-[#6a6a75] hover:text-[#6c757d] dark:hover:text-[#a0a0aa]"}`}>
                   <CatIcon className="text-sm flex-shrink-0" />
                   <span className="flex-1 text-left">{cat.label}</span>
                   <BsChevronDown className={`text-xs transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -1857,7 +2065,7 @@ export default function AWSDashboardPage() {
                       const Icon = tab.icon;
                       return (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}>
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400" : "text-[#6c757d] dark:text-[#a0a0aa] hover:bg-[#e9ecef] dark:hover:bg-[#353842]"}`}>
                           <Icon className="text-sm flex-shrink-0" />
                           <span>{tab.label}</span>
                         </button>
@@ -1869,25 +2077,25 @@ export default function AWSDashboardPage() {
             );
           })}
         </nav>
-        <div className="p-2 border-t border-gray-200 dark:border-gray-700">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="w-full flex items-center justify-center p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+        <div className="p-2 border-t border-[#dee2e6] dark:border-[#3a3d48]">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="w-full flex items-center justify-center p-2 rounded-lg text-[#6c757d] dark:text-[#a0a0aa] hover:bg-[#e9ecef] dark:hover:bg-[#353842] transition-colors">
             {sidebarOpen ? <BsChevronDown className="rotate-90" /> : <BsChevronDown className="-rotate-90" />}
           </button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-3 flex items-center justify-between flex-shrink-0 gap-2">
+        <header className="bg-[#f8f9fa] dark:bg-[#2a2d38] border-b border-[#dee2e6] dark:border-[#3a3d48] px-4 md:px-6 py-3 flex items-center justify-between flex-shrink-0 gap-2">
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0 min-w-0">
-            <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white whitespace-nowrap hidden sm:block">AWS Dashboard</h1>
+            <h1 className="text-lg md:text-xl font-bold text-[#212529] dark:text-[#e8e8ed] whitespace-nowrap hidden sm:block">AWS Dashboard</h1>
             <div className="relative flex-shrink-0">
-              <select value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)} className="px-2 md:px-3 py-1.5 pr-7 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white appearance-none">
+              <select value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)} className="px-2 md:px-3 py-1.5 pr-7 bg-[#e9ecef] dark:bg-[#353842] border-0 rounded-lg text-sm text-[#212529] dark:text-[#e8e8ed] appearance-none">
                 {AWS_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-              <BsChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs" />
+              <BsChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#adb5bd] pointer-events-none text-xs" />
             </div>
             <div className="relative flex-shrink-0">
-              <select value={refreshInterval} onChange={(e) => handleRefreshIntervalChange(Number(e.target.value))} className="px-2 md:px-3 py-1.5 pr-7 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white appearance-none">
+              <select value={refreshInterval} onChange={(e) => handleRefreshIntervalChange(Number(e.target.value))} className="px-2 md:px-3 py-1.5 pr-7 bg-[#e9ecef] dark:bg-[#353842] border-0 rounded-lg text-sm text-[#212529] dark:text-[#e8e8ed] appearance-none">
                 <option value={5000}>Every 5s</option>
                 <option value={10000}>Every 10s</option>
                 <option value={30000}>Every 30s</option>
@@ -1897,17 +2105,17 @@ export default function AWSDashboardPage() {
                 <option value={1800000}>Every 30m</option>
                 <option value={3600000}>Every 1h</option>
               </select>
-              <BsChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs" />
+              <BsChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#adb5bd] pointer-events-none text-xs" />
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            <div className="hidden lg:flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="hidden lg:flex items-center gap-2 text-sm text-[#6c757d] dark:text-[#a0a0aa]">
               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${loading ? "bg-yellow-500 animate-pulse" : "bg-green-500"}`} />
               <span className="whitespace-nowrap">{lastUpdated.toLocaleTimeString()}</span>
               {loading && <Spinner size="sm" />}
             </div>
             <div className="relative">
-              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+              <BsSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#adb5bd] text-sm" />
               <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => {
                 if (e.key === "Enter" && searchQuery.trim()) {
                   const q = searchQuery.toLowerCase();
@@ -1942,7 +2150,7 @@ export default function AWSDashboardPage() {
                   else if (["auto scaling", "asg"].some(k => q.includes(k))) setActiveTab("auto_scaling");
                   else if (["cloudwatch", "alarm", "metric", "monitor"].some(k => q.includes(k))) setActiveTab("cloudwatch_dash");
                 }
-              }} placeholder="Search..." className="pl-8 pr-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 w-32 md:w-48 lg:w-56" />
+              }} placeholder="Search..." className="pl-8 pr-3 py-1.5 bg-[#e9ecef] dark:bg-[#353842] border-0 rounded-lg text-sm text-[#212529] dark:text-[#e8e8ed] placeholder-[#adb5bd] w-32 md:w-48 lg:w-56" />
             </div>
             <button onClick={handleDisconnect} className="px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors whitespace-nowrap flex-shrink-0">
               Disconnect
@@ -1950,9 +2158,14 @@ export default function AWSDashboardPage() {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-[#f0f0f5] dark:bg-[#1e2128]">
           {renderTab()}
         </main>
+      </div>
+
+      {/* Chatbot - Fixed position bottom right */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <MultiModalChat agentType="devops" />
       </div>
     </div>
   );

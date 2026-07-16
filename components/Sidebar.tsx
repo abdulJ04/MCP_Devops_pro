@@ -40,7 +40,7 @@ export default function Sidebar() {
 
       {/* Mobile toggle button */}
       <button
-        className="fixed top-3 left-3 z-30 p-2 rounded-lg bg-white shadow-md border border-gray-200 text-gray-600 md:hidden hover:bg-gray-50 transition-all"
+        className="fixed top-3 left-3 z-30 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 md:hidden hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? <BsX size={20} /> : <BsList size={20} />}
@@ -49,7 +49,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 shadow-sm z-20
+          fixed top-0 left-0 h-full w-64 bg-[#f8f9fa] dark:bg-[#2a2d38] border-r border-[#dee2e6] dark:border-[#3a3d48] shadow-sm z-20
           flex flex-col
           transition-transform duration-300 ease-in-out
           ${isOpen || mounted ? 'translate-x-0' : '-translate-x-full'}
@@ -57,14 +57,14 @@ export default function Sidebar() {
         `}
       >
         {/* Logo / Brand */}
-        <div className="p-5 border-b border-gray-100">
+        <div className="p-5 border-b border-[#dee2e6] dark:border-[#3a3d48]">
           <div className="flex items-center">
             <div className="h-9 w-9 rounded-lg bg-gradient-to-r from-indigo-600 via-purple-500 to-blue-500 flex items-center justify-center mr-3 shadow-sm shrink-0">
               <BsRobot className="text-white" size={18} />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-500 to-blue-500 truncate">DevOps AI Agents</h1>
-              <p className="text-[11px] text-gray-400">AI-powered operations</p>
+              <p className="text-[11px] text-[#6c757d] dark:text-[#6a6a75]">AI-powered operations</p>
             </div>
           </div>
         </div>
@@ -79,11 +79,11 @@ export default function Sidebar() {
                   onClick={() => setIsOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                     pathname === item.path
-                      ? 'bg-indigo-50 text-indigo-700 font-medium'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-medium'
+                      : 'text-[#6c757d] dark:text-[#a0a0aa] hover:bg-[#e9ecef] dark:hover:bg-[#353842] hover:text-[#212529] dark:hover:text-[#e8e8ed]'
                   }`}
                 >
-                  <span className={pathname === item.path ? 'text-indigo-600' : 'text-gray-400'}>{item.icon}</span>
+                  <span className={pathname === item.path ? 'text-indigo-600 dark:text-indigo-400' : 'text-[#adb5bd] dark:text-[#6a6a75]'}>{item.icon}</span>
                   <span>{item.name}</span>
                 </Link>
               </li>
@@ -92,13 +92,13 @@ export default function Sidebar() {
         </nav>
 
         {/* Bottom tip */}
-        <div className="p-4 border-t border-gray-100">
-          <div className="p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100">
+        <div className="p-4 border-t border-[#dee2e6] dark:border-[#3a3d48]">
+          <div className="p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-100 dark:border-indigo-800/40">
             <div className="flex items-start gap-2">
-              <BsLightbulb className="text-indigo-600 mt-0.5 shrink-0" size={14} />
+              <BsLightbulb className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" size={14} />
               <div>
-                <p className="text-xs font-medium text-gray-800 mb-0.5">AI Assistant</p>
-                <p className="text-[11px] text-gray-500 leading-relaxed">Ask about DevOps pipelines, cloud infra, security & more</p>
+                <p className="text-xs font-medium text-[#212529] dark:text-[#e8e8ed] mb-0.5">AI Assistant</p>
+                <p className="text-[11px] text-[#6c757d] dark:text-[#6a6a75] leading-relaxed">Ask about DevOps pipelines, cloud infra, security & more</p>
               </div>
             </div>
           </div>

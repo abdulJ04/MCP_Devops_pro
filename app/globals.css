@@ -3,9 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 245, 245, 245;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 30, 30, 30;
+  --background-start-rgb: 240, 240, 245;
+  --background-end-rgb: 248, 248, 252;
+  --card-bg: #f8f9fa;
+  --card-border: #dee2e6;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --text-muted: #adb5bd;
+  --bg-secondary: #e9ecef;
+  --bg-hover: #dee2e6;
+}
+
+.dark {
+  --foreground-rgb: 220, 220, 225;
+  --background-start-rgb: 30, 33, 40;
+  --background-end-rgb: 35, 38, 48;
+  --card-bg: #2a2d38;
+  --card-border: #3a3d48;
+  --text-primary: #e8e8ed;
+  --text-secondary: #a0a0aa;
+  --text-muted: #6a6a75;
+  --bg-secondary: #353842;
+  --bg-hover: #404350;
 }
 
 body {
@@ -17,6 +37,17 @@ body {
     )
     rgb(var(--background-start-rgb));
   font-family: "Segoe UI", sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+}
+
+html {
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
 }
 
 @layer utilities {
@@ -30,15 +61,17 @@ body {
 }
 
 .sidebar-item:hover {
-  @apply bg-msBlue-100;
+  @apply bg-blue-50 dark:bg-gray-700;
 }
 
 .sidebar-item.active {
-  @apply bg-msBlue-200 text-msBlue-700;
+  @apply bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400;
 }
 
 .card {
-  @apply p-6 rounded-xl shadow-md bg-white border border-msGray-200 hover:shadow-lg transition-shadow duration-300;
+  @apply p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
 }
 
 .btn-primary {
@@ -46,11 +79,85 @@ body {
 }
 
 .card-title {
-  @apply text-xl font-semibold text-msBlue-700 mb-2;
+  @apply text-xl font-semibold mb-2;
+  color: var(--text-primary);
 }
 
 .page-title {
   @apply text-3xl font-bold bg-clip-text text-transparent bg-ms-gradient pb-1;
+}
+
+/* Global dark mode overrides for msGray and msBlue colors */
+.dark .bg-white {
+  background-color: #2a2d38 !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #353842 !important;
+}
+
+.dark .bg-gray-200 {
+  background-color: #404350 !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-700,
+.dark .text-msGray-600,
+.dark .text-msGray-700 {
+  color: #a0a0aa !important;
+}
+
+.dark .text-gray-800,
+.dark .text-gray-900 {
+  color: #e8e8ed !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-msGray-200 {
+  border-color: #3a3d48 !important;
+}
+
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #353842 !important;
+}
+
+.dark .hover\:bg-gray-200:hover {
+  background-color: #404350 !important;
+}
+
+.dark .bg-msGray-100 {
+  background-color: #353842 !important;
+}
+
+.dark .bg-msGray-200 {
+  background-color: #404350 !important;
+}
+
+.dark .text-msGray-500,
+.dark .text-msGray-600 {
+  color: #a0a0aa !important;
+}
+
+.dark .text-msGray-700,
+.dark .text-msGray-800 {
+  color: #e8e8ed !important;
+}
+
+.dark .border-msGray-200 {
+  border-color: #3a3d48 !important;
+}
+
+.dark .bg-msBlue-100 {
+  background-color: rgba(0, 120, 212, 0.15) !important;
+}
+
+.dark .text-msBlue-600,
+.dark .text-msBlue-700,
+.dark .text-msBlue-800 {
+  color: #70b8ff !important;
 }
 
 /* Switch component styling */

@@ -115,14 +115,14 @@ export default function PageLayout({
               </>
             )}
           </div>
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
             OpenClaw AI Agent{' '}
             {openclawOnline === null ? (
-              <span className="text-yellow-600">checking...</span>
+              <span className="text-yellow-600 dark:text-yellow-400">checking...</span>
             ) : openclawOnline ? (
-              <span className="text-green-600">active</span>
+              <span className="text-green-600 dark:text-green-400">active</span>
             ) : (
-              <span className="text-red-600">disconnected</span>
+              <span className="text-red-600 dark:text-red-400">disconnected</span>
             )}
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function PageLayout({
       {/* Main Content Grid with Enhanced Styling */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div 
-          className="order-2 lg:order-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+          className="order-2 lg:order-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}

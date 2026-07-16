@@ -5,6 +5,24 @@
 echo "Starting DevOps AI Agents..."
 echo ""
 
+# ============================================================
+# LLM CONFIGURATION (Optional - Local AI works without any API!)
+# ============================================================
+
+# Ollama (LOCAL - Free, Fast)
+export OLLAMA_URL="http://localhost:11434"
+export OLLAMA_MODEL="qwen2.5:1.5b"
+
+# Groq (FREE Cloud LLM) - Get key from https://console.groq.com
+export GROQ_API_KEY=""
+
+# Anthropic Claude (PAID - Best Quality) - Get key from https://console.anthropic.com
+export ANTHROPIC_API_KEY=""
+
+# ============================================================
+# LLM Priority: Claude (paid) → Ollama (local/free) → Local AI Engine
+# ============================================================
+
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
   echo "[1/3] Installing npm dependencies..."

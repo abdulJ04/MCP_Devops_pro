@@ -169,7 +169,7 @@ export default function Home() {
             AI-Enhanced DevOps Features
           </motion.h2>
           <motion.p 
-            className="text-gray-600 max-w-2xl mx-auto"
+            className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -195,8 +195,8 @@ export default function Home() {
         {/* AI platform benefits section */}
         <div className="mt-20 mb-16">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">Why AI-Powered DevOps?</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-3">Why AI-Powered DevOps?</h2>
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Our platform uses advanced AI algorithms to supercharge your DevOps workflows
             </p>
           </div>
@@ -221,17 +221,17 @@ export default function Home() {
             ].map((benefit, index) => (
               <motion.div 
                 key={index} 
-                className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+                className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <div className="w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center mb-4">
                   {benefit.icon}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">{benefit.title}</h3>
-                <p className="text-gray-600">{benefit.description}</p>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{benefit.title}</h3>
+                <p className="text-gray-600 dark:text-gray-400">{benefit.description}</p>
               </motion.div>
             ))}
           </div>
