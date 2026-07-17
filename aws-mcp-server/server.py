@@ -4,6 +4,7 @@ import time
 import asyncio
 import logging
 import json
+import threading
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
@@ -28,6 +29,7 @@ app.add_middleware(
 )
 
 EXECUTOR = ThreadPoolExecutor(max_workers=20)
+_creds_lock = threading.RLock()
 
 _credentials: Dict[str, Any] = {
     "aws_access_key": "test",
@@ -45,88 +47,94 @@ _session_created_at: float = 0
 
 
 def _get_session() -> boto3.Session:
-    if "default" not in _sessions:
-        access_key = _credentials.get("aws_access_key", "")
-        secret_key = _credentials.get("aws_secret_key", "")
-        if not access_key or not secret_key:
-            raise HTTPException(status_code=401, detail="No AWS credentials configured. Please login to the dashboard first.")
-        session_kwargs = {
-            "aws_access_key_id": access_key,
-            "aws_secret_access_key": secret_key,
-            "region_name": _credentials.get("aws_region", "us-east-1"),
-        }
-        if _credentials.get("aws_session_token"):
-            session_kwargs["aws_session_token"] = _credentials["aws_session_token"]
-        logger.info(f"Creating session: key={access_key[:8]}..., localstack={_credentials.get('use_localstack', False)}")
-        _sessions["default"] = boto3.Session(**session_kwargs)
-    return _sessions["default"]
+    with _creds_lock:
+        if "default" not in _sessions:
+            access_key = _credentials.get("aws_access_key", "")
+            secret_key = _credentials.get("aws_secret_key", "")
+            if not access_key or not secret_key:
+                raise HTTPException(status_code=401, detail="No AWS credentials configured. Please login to the dashboard first.")
+            session_kwargs = {
+                "aws_access_key_id": access_key,
+                "aws_secret_access_key": secret_key,
+                "region_name": _credentials.get("aws_region", "us-east-1"),
+            }
+            if _credentials.get("aws_session_token"):
+                session_kwargs["aws_session_token"] = _credentials["aws_session_token"]
+            logger.info(f"Creating session: key={access_key[:8]}..., localstack={_credentials.get('use_localstack', False)}")
+            _sessions["default"] = boto3.Session(**session_kwargs)
+        return _sessions["default"]
 
 
 def _get_client(service: str):
-    kwargs = {"region_name": _credentials.get("aws_region", "us-east-1")}
-    if _credentials.get("use_localstack"):
-        kwargs["endpoint_url"] = _credentials.get("endpoint_url", "http://localhost:4566")
+    with _creds_lock:
+        kwargs = {"region_name": _credentials.get("aws_region", "us-east-1")}
+        if _credentials.get("use_localstack"):
+            kwargs["endpoint_url"] = _credentials.get("endpoint_url", "http://localhost:4566")
     return _get_session().client(service, **kwargs)
 
 
 def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aws_region=None, use_localstack=None):
     global _credentials, _sessions, _session_created_at
 
-    # Check session timeout
-    if _session_created_at > 0 and time.time() - _session_created_at > SESSION_TIMEOUT:
-        logger.warning("Session expired, clearing credentials")
-        _credentials.clear()
-        _sessions.clear()
-        _cache.clear()
-        _session_created_at = 0
-        raise HTTPException(status_code=401, detail="Session expired. Please reconnect.")
-
-    # If explicitly told to use LocalStack, keep LocalStack mode
-    if use_localstack is True:
-        if not _credentials.get("use_localstack") or "default" not in _sessions:
-            logger.info("Setting up LocalStack mode")
-            _credentials = {
-                "aws_access_key": access_key or "test",
-                "aws_secret_key": secret_key or "test",
-                "aws_region": aws_region or "us-east-1",
-                "endpoint_url": "http://localhost:4566",
-                "use_localstack": True,
-            }
-            _sessions.clear()
-        return
-
-    # If live credentials provided, switch to live mode
-    if access_key and secret_key:
-        # If currently on LocalStack, clear sessions to force reconnect to live AWS
-        if _credentials.get("use_localstack"):
-            logger.info("Switching from LocalStack to live AWS")
+    with _creds_lock:
+        # Check session timeout
+        if _session_created_at > 0 and time.time() - _session_created_at > SESSION_TIMEOUT:
+            logger.warning("Session expired, clearing credentials")
+            _credentials.clear()
             _sessions.clear()
             _cache.clear()
+            _session_created_at = 0
+            raise HTTPException(status_code=401, detail="Session expired. Please reconnect.")
 
-        if (_credentials.get("aws_access_key") != access_key or
-            _credentials.get("aws_secret_key") != secret_key or
-            _credentials.get("aws_session_token") != session_token):
-            logger.info(f"Setting live credentials: key={access_key[:8]}..., region={aws_region}")
-            _credentials = {
-                "aws_access_key": access_key,
-                "aws_secret_key": secret_key,
-                "aws_session_token": session_token,
-                "aws_region": aws_region or "us-east-1",
-                "use_localstack": False,
-            }
-            _sessions.clear()
-            _session_created_at = time.time()
-    elif _credentials.get("use_localstack"):
-        # Keep using LocalStack defaults
-        return
+        # If explicitly told to use LocalStack, keep LocalStack mode
+        if use_localstack is True:
+            if not _credentials.get("use_localstack") or "default" not in _sessions:
+                logger.info("Setting up LocalStack mode")
+                _credentials = {
+                    "aws_access_key": access_key or "test",
+                    "aws_secret_key": secret_key or "test",
+                    "aws_region": aws_region or "us-east-1",
+                    "endpoint_url": "http://localhost:4566",
+                    "use_localstack": True,
+                }
+                _sessions.clear()
+            return
+
+        # If explicitly told NOT to use LocalStack (use_localstack is False or None with live keys)
+        if use_localstack is False or (access_key and secret_key and use_localstack is not True):
+            # Clear LocalStack session if switching to live
+            if _credentials.get("use_localstack"):
+                logger.info("Switching from LocalStack to live AWS")
+                _sessions.clear()
+                _cache.clear()
+
+            if access_key and secret_key:
+                if (_credentials.get("aws_access_key") != access_key or
+                    _credentials.get("aws_secret_key") != secret_key or
+                    _credentials.get("aws_session_token") != session_token or
+                    _credentials.get("use_localstack", False)):
+                    logger.info(f"Setting live credentials: key={access_key[:8]}..., region={aws_region}")
+                    _credentials = {
+                        "aws_access_key": access_key,
+                        "aws_secret_key": secret_key,
+                        "aws_session_token": session_token,
+                        "aws_region": aws_region or "us-east-1",
+                        "use_localstack": False,
+                    }
+                    _sessions.clear()
+                    _session_created_at = time.time()
+            return
+
+        # Keep using existing LocalStack defaults
+        if _credentials.get("use_localstack"):
+            return
 
 
 @app.post("/refresh")
 async def refresh_cache():
     """Clear cache so next requests fetch fresh data from AWS."""
-    _cache.clear()
-    # Also clear sessions so they get recreated with current credentials
-    _sessions.clear()
+    with _creds_lock:
+        _cache.clear()
     return {"success": True, "message": "Cache cleared"}
 
 
@@ -143,11 +151,18 @@ async def set_timeout(request: dict = {}):
 async def disconnect():
     """Clear credentials and session — called when dashboard disconnects."""
     global _credentials, _sessions, _session_created_at
-    _credentials.clear()
-    _sessions.clear()
-    _cache.clear()
-    _session_created_at = 0
-    logger.info("Dashboard disconnected — credentials cleared")
+    with _creds_lock:
+        _credentials = {
+            "aws_access_key": "test",
+            "aws_secret_key": "test",
+            "aws_region": "us-east-1",
+            "endpoint_url": "http://localhost:4566",
+            "use_localstack": True,
+        }
+        _sessions.clear()
+        _cache.clear()
+        _session_created_at = 0
+    logger.info("Dashboard disconnected — credentials reset to LocalStack defaults")
     return {"success": True, "message": "Disconnected. MCP server will require re-authentication."}
 
 
@@ -202,64 +217,72 @@ class AuthRequest(BaseModel):
 async def auth(req: AuthRequest):
     global _credentials, _sessions, _session_created_at
 
-    if req.use_localstack:
-        _credentials = {
-            "aws_access_key": "test",
-            "aws_secret_key": "test",
-            "aws_region": req.get_region(),
-            "use_localstack": True,
-            "endpoint_url": req.endpoint_url or "http://localhost:4566",
-        }
-        _sessions.clear()
-        _session_created_at = time.time()
+    with _creds_lock:
+        if req.use_localstack:
+            try:
+                test_session_kwargs = {
+                    "aws_access_key_id": "test",
+                    "aws_secret_access_key": "test",
+                    "region_name": req.get_region(),
+                }
+                test_session = boto3.Session(**test_session_kwargs)
+                sts = test_session.client("sts", endpoint_url=req.endpoint_url or "http://localhost:4566")
+                identity = sts.get_caller_identity()
+                _credentials = {
+                    "aws_access_key": "test",
+                    "aws_secret_key": "test",
+                    "aws_region": req.get_region(),
+                    "use_localstack": True,
+                    "endpoint_url": req.endpoint_url or "http://localhost:4566",
+                }
+                _sessions.clear()
+                _session_created_at = time.time()
+                logger.info(f"LocalStack auth success: Account={identity.get('Account')}")
+                return {"success": True, "status": "success", "account": identity.get("Account"), "arn": identity.get("Arn"), "message": "Connected to LocalStack"}
+            except Exception as e:
+                logger.error(f"LocalStack auth error: {e}")
+                raise HTTPException(status_code=401, detail=f"LocalStack connection failed: {str(e)}")
+
+        access_key = req.get_access_key()
+        secret_key = req.get_secret_key()
+        session_token = req.get_session_token()
+        aws_region = req.get_region()
+
+        if not access_key or not secret_key:
+            raise HTTPException(status_code=400, detail="AWS Access Key and Secret Key are required")
+
         try:
-            sts = _get_client("sts")
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+                region_name=aws_region,
+            )
+            sts = session.client("sts")
             identity = sts.get_caller_identity()
-            logger.info(f"LocalStack auth success: Account={identity.get('Account')}")
-            return {"success": True, "status": "success", "account": identity.get("Account"), "arn": identity.get("Arn"), "message": "Connected to LocalStack"}
+            logger.info(f"Auth success: Account={identity.get('Account')}, ARN={identity.get('Arn')}")
+            _credentials = {
+                "aws_access_key": access_key,
+                "aws_secret_key": secret_key,
+                "aws_session_token": session_token,
+                "aws_region": aws_region,
+                "use_localstack": False,
+            }
+            _sessions.clear()
+            _session_created_at = time.time()
+            return {"success": True, "status": "success", "account": identity.get("Account"), "arn": identity.get("Arn"), "message": f"Connected to AWS account {identity.get('Account')}"}
         except Exception as e:
-            logger.error(f"LocalStack auth error: {e}")
-            raise HTTPException(status_code=401, detail=f"LocalStack connection failed: {str(e)}")
-
-    access_key = req.get_access_key()
-    secret_key = req.get_secret_key()
-    session_token = req.get_session_token()
-    aws_region = req.get_region()
-
-    if not access_key or not secret_key:
-        raise HTTPException(status_code=400, detail="AWS Access Key and Secret Key are required")
-
-    _credentials = {
-        "aws_access_key": access_key,
-        "aws_secret_key": secret_key,
-        "aws_session_token": session_token,
-        "aws_region": aws_region,
-    }
-    _sessions.clear()
-    _session_created_at = time.time()
-    try:
-        session = boto3.Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            aws_session_token=session_token,
-            region_name=aws_region,
-        )
-        sts = session.client("sts")
-        identity = sts.get_caller_identity()
-        logger.info(f"Auth success: Account={identity.get('Account')}, ARN={identity.get('Arn')}")
-        return {"success": True, "status": "success", "account": identity.get("Account"), "arn": identity.get("Arn"), "message": f"Connected to AWS account {identity.get('Account')}"}
-    except Exception as e:
-        error_msg = str(e)
-        logger.error(f"Auth error: {error_msg}")
-        if "InvalidClientTokenId" in error_msg:
-            error_msg = "Invalid AWS Access Key ID - Check if your Access Key is correct and the IAM user is active"
-        elif "SignatureDoesNotMatch" in error_msg:
-            error_msg = "Invalid AWS Secret Access Key - Check if your Secret Key is correct"
-        elif "AccessDenied" in error_msg:
-            error_msg = "Access denied - Check if your IAM user has sts:GetCallerIdentity permission"
-        elif "ExpiredToken" in error_msg or "expired" in error_msg.lower():
-            error_msg = "Session token expired - Get new credentials from AWS SSO/CLI"
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {error_msg}")
+            error_msg = str(e)
+            logger.error(f"Auth error: {error_msg}")
+            if "InvalidClientTokenId" in error_msg:
+                error_msg = "Invalid AWS Access Key ID - Check if your Access Key is correct and the IAM user is active"
+            elif "SignatureDoesNotMatch" in error_msg:
+                error_msg = "Invalid AWS Secret Access Key - Check if your Secret Key is correct"
+            elif "AccessDenied" in error_msg:
+                error_msg = "Access denied - Check if your IAM user has sts:GetCallerIdentity permission"
+            elif "ExpiredToken" in error_msg or "expired" in error_msg.lower():
+                error_msg = "Session token expired - Get new credentials from AWS SSO/CLI"
+            raise HTTPException(status_code=401, detail=f"Authentication failed: {error_msg}")
 
 
 @app.get("/health")
@@ -270,16 +293,17 @@ async def health():
 @app.get("/sync-credentials")
 async def sync_credentials():
     """Return current credentials for MCP server to sync with dashboard."""
-    connected = bool(_credentials.get("aws_access_key") or _credentials.get("use_localstack"))
-    return {
-        "connected": connected,
-        "use_localstack": _credentials.get("use_localstack", False),
-        "aws_access_key": _credentials.get("aws_access_key", ""),
-        "aws_secret_key": _credentials.get("aws_secret_key", ""),
-        "aws_region": _credentials.get("aws_region", "us-east-1"),
-        "endpoint_url": _credentials.get("endpoint_url", ""),
-        "aws_session_token": _credentials.get("aws_session_token", ""),
-    }
+    with _creds_lock:
+        connected = bool(_credentials.get("aws_access_key") or _credentials.get("use_localstack"))
+        return {
+            "connected": connected,
+            "use_localstack": _credentials.get("use_localstack", False),
+            "aws_access_key": _credentials.get("aws_access_key", ""),
+            "aws_secret_key": _credentials.get("aws_secret_key", ""),
+            "aws_region": _credentials.get("aws_region", "us-east-1"),
+            "endpoint_url": _credentials.get("endpoint_url", ""),
+            "aws_session_token": _credentials.get("aws_session_token", ""),
+        }
 
 
 # ============================================================
