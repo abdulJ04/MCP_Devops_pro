@@ -1,289 +1,422 @@
-# DevOps AI Agents Platform
+# MCP DevOps Pro
 
-Full-stack DevOps platform with CI/CD pipeline, OpenClaw AI agent chat, and real-time AWS Monitoring Dashboard powered by Python MCP backend + boto3.
+> AI-powered DevOps platform with real-time AWS monitoring, intelligent chatbot, security analysis, and Claude Desktop MCP integration.
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-18-blue)](https://react.dev/)
+[![Python](https://img.shields.io/badge/Python-3.12+-yellow)](https://python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple)](LICENSE)
+
+---
+
+![System Overview](docs/system_overview.png)
 
 ---
 
 ## Features
 
-- **AWS Monitoring Dashboard** - Real-time monitoring of 30+ AWS services
-- **CI/CD Pipeline** - Git operations, code cloning, deployment workflows
-- **OpenClaw AI Agent** - Chat-based DevOps assistant
-- **LocalStack Support** - Test with free LocalStack (no AWS account needed)
-- **Real AWS Support** - Connect to production AWS accounts
-- **Auto-Refresh** - Configurable refresh intervals (5s to 1h)
-- **Collapsible Sidebar** - Grouped service categories
+| Feature | Description |
+|---------|-------------|
+| **AWS Dashboard** | Real-time monitoring of 30+ AWS services with charts and metrics |
+| **AI Chatbot** | Natural language commands to query and manage AWS resources |
+| **Security Analysis** | Automated security audit with scoring (0-100) |
+| **Cost Optimization** | Cost analysis with savings recommendations |
+| **Architecture Review** | Automated architecture health scoring |
+| **LLM Integration** | Claude API + Ollama (local) + Groq (free) |
+| **MCP Server** | 22 tools for Claude Desktop integration |
+| **Dual Mode** | LocalStack (free) for testing, Real AWS for production |
+| **Dark/Light Theme** | Route-based theming — dark on dashboard, light elsewhere |
+| **Voice Chat** | Speech-to-text and text-to-speech in chatbot |
+| **File Upload** | Drag-and-drop image/video/file attachments |
+
+---
+
+## How It Works
+
+![Data Flow](docs/data_flow.png)
+
+```
+User clicks tab → Frontend fetchAWS() → Next.js proxy → Python backend
+    → boto3 API call → AWS/LocalStack → Response → Tables/Charts/Cards
+```
 
 ---
 
 ## Prerequisites
 
-Before you start, make sure you have:
+| Tool | Version | Check Command |
+|------|---------|---------------|
+| **Node.js** | 18+ | `node --version` |
+| **npm** | 9+ | `npm --version` |
+| **Python** | 3.10+ | `python3 --version` |
+| **pip3** | Latest | `pip3 --version` |
+| **Git** | Any | `git --version` |
+| **Docker** | 20+ (for LocalStack) | `docker --version` |
 
-| Tool | Version | Install Command |
-|------|---------|-----------------|
-| **Node.js** | 18+ | `sudo apt install nodejs` |
-| **npm** | 9+ | Comes with Node.js |
-| **Python** | 3.10+ | `sudo apt install python3` |
-| **pip3** | Latest | `sudo apt install python3-pip` |
-| **Git** | Latest | `sudo apt install git` |
-
-### Check versions:
+### Install missing tools (Ubuntu/Debian):
 ```bash
-node --version    # Should show v18.x or higher
-npm --version     # Should show 9.x or higher
-python3 --version # Should show 3.10 or higher
-git --version     # Any recent version
+sudo apt update
+sudo apt install -y nodejs npm python3 python3-pip git docker.io
 ```
 
 ---
 
-## Quick Start (Recommended)
+## Quick Start (3 Steps)
 
 ### Step 1: Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/Devops-AI-Agents.git
-cd Devops-AI-Agents
+git clone https://github.com/abdulJ04/MCP_Devops_pro.git
+cd MCP_Devops_pro
 ```
 
-### Step 2: Run the one-click startup script
+### Step 2: Start everything
 ```bash
 bash start.sh
 ```
 
-That's it! The script will:
-1. Install all npm dependencies
-2. Install all Python dependencies
-3. Start the Python backend on port 8085
-4. Start the Next.js frontend on port 3000
+This automatically:
+- Installs npm dependencies (if missing)
+- Installs Python dependencies (if missing)
+- Starts Python backend on port **8085**
+- Starts Next.js frontend on port **3000**
 
 ### Step 3: Open in browser
 ```
 http://localhost:3000
 ```
 
----
-
-## Manual Installation
-
-If the startup script doesn't work, follow these steps:
-
-### Step 1: Install npm dependencies
-```bash
-npm install
-```
-
-### Step 2: Install Python dependencies
-```bash
-pip3 install -r aws-mcp-server/requirements.txt
-```
-
-### Step 3: Start Python backend
-```bash
-cd aws-mcp-server
-python3 server.py &
-cd ..
-```
-
-### Step 4: Start Next.js frontend
-```bash
-npm run dev
-```
-
-### Step 5: Open in browser
-```
-http://localhost:3000
-```
+**That's it!** You're ready to go.
 
 ---
 
-## LocalStack Setup (Free Testing - No AWS Account Needed)
+## First-Time Setup Guide
 
-LocalStack provides a free local AWS emulator. This is the easiest way to test.
+### Option A: LocalStack (Free — No AWS Account Needed)
 
-### Step 1: Install Docker
+**Step 1: Start LocalStack**
 ```bash
-sudo apt install docker.io
-sudo systemctl start docker
-sudo usermod -aG docker $USER
-# Log out and log back in
-```
+# Start LocalStack in Docker
+localstack start -d
 
-### Step 2: Start LocalStack
-- Once you try to test localstack into local goto MCP_Devops_pro/localstack_test
-- Next run setup-enterprise-demo.sh
-- If any issue run cleanup-demo.sh && localstack_issue.sh
-- or follow below instruction.
-
-```bash
+# OR using Docker directly
 docker run -d --name localstack-main -p 4566:4566 localstack/localstack
 ```
 
-### Step 3: Create demo resources (optional)
+**Step 2: Create demo data (optional)**
 ```bash
-# Set alias for aws cli (localstack)
-alias aws='aws --endpoint-url=http://localhost:4566'
-
-# Create S3 buckets
-aws s3 mb s3://my-app-bucket
-aws s3 mb s3://my-backup-bucket
-
-# Create EC2 instances
-aws ec2 run-instances --image-id ami-0c55b159cbfafe1f0 --instance-type t2.micro --count 3
-
-# Create IAM user
-aws iam create-user --user-name test-user
+cd localstack_test
+bash setup-enterprise-demo.sh
 ```
 
-### Step 4: Connect to dashboard
-1. Open `http://localhost:3000`
-2. Toggle **"Use LocalStack"** to ON (default)
-3. Leave Access Key and Secret Key as any value (e.g., `test` / `test`)
-4. Click **"Connect to LocalStack"**
+**Step 3: Connect to dashboard**
+1. Open `http://localhost:3000/aws-dashboard`
+2. Toggle **"Use LocalStack"** to ON
+3. Leave Access Key and Secret Key as `test`
+4. Click **"Connect"**
+
+**Step 4: Explore!**
+- Click any tab (EC2, S3, Lambda, etc.)
+- Try the chatbot: "list ec2 instances"
+- Try "security analysis" or "health check"
 
 ---
 
-## Real AWS Setup
+### Option B: Real AWS Account
 
-To connect to your real AWS account:
-
-### Step 1: Get AWS credentials
-1. Go to AWS Console → IAM → Users → Your User → Security Credentials
-2. Create an Access Key (if you don't have one)
+**Step 1: Get AWS credentials**
+1. Go to [AWS Console](https://console.aws.amazon.com/) → IAM → Users → Your User
+2. Click **Security Credentials** → **Create Access Key**
 3. Copy the **Access Key ID** and **Secret Access Key**
 
-### Step 2: Get session token (if using SSO)
-```bash
-aws sts get-session-token --duration-seconds 3600
-```
-
-### Step 3: Connect to dashboard
-1. Open `http://localhost:3000`
+**Step 2: Connect to dashboard**
+1. Open `http://localhost:3000/aws-dashboard`
 2. Toggle **"Use LocalStack"** to OFF
 3. Enter your **Access Key ID** (starts with `AKIA`)
 4. Enter your **Secret Access Key**
-5. Enter your **Session Token** (if using SSO)
-6. Select your **Region**
-7. Click **"Connect to AWS"**
+5. Select your **Region** (e.g., `us-east-1`)
+6. Click **"Connect"**
+
+**Step 3: Explore!**
+- All 30+ AWS services will load automatically
+- Try "cost analysis" for spending insights
+- Try "architecture review" for infrastructure health
 
 ---
 
-## Configuration
+## AI Chatbot
 
-### Refresh Interval
-- Click the refresh dropdown in the header
-- Select your preferred interval: 5s, 10s, 30s, 1m, 5m, 10m, 30m, or 1h
-- Setting is saved to localStorage and persists across refreshes
+The chatbot supports natural language commands with a 3-layer architecture:
 
-### Session Timeout
-- Default: 1 hour
-- Can be changed in Settings tab
-- Options: 15min, 30min, 1hr, 2hr, 24hr
+### Layer 1: Direct Commands
+```
+"list ec2 instances"    → Shows all EC2 instances
+"list s3 buckets"       → Shows all S3 buckets
+"list lambda functions" → Shows all Lambda functions
+"stop instance i-xxx"   → Stops an EC2 instance
+"cost"                  → Shows cost overview
+"security"              → Shows security findings
+"help"                  → Shows all available commands
+```
 
-### Sidebar
-- Click the arrow to collapse/expand sidebar
-- Categories: Home, Compute, Storage, Database, Networking, Security, etc.
-- Click category to expand/collapse
+### Layer 2: AI Analysis
+```
+"security analysis"     → Deep security audit (score 0-100)
+"cost analysis"         → Cost optimization recommendations
+"architecture review"   → Architecture health check
+"health check"          → Combined analysis of all three
+```
+
+### Layer 3: LLM Chat (for anything else)
+```
+"How to reduce my AWS bill?"
+"What's the best instance type for my workload?"
+"Explain my security findings"
+```
+
+**LLM Priority:**
+1. Claude API (paid, best quality)
+2. Ollama (free, local, ~6-11s response)
+3. Local AI engine (instant, rule-based)
 
 ---
 
-## API Endpoints
+## API Reference
 
-The Python backend runs on `http://localhost:8085` with these endpoints:
+### Backend Endpoints (`http://localhost:8085`)
 
-| Endpoint | Description |
-|----------|-------------|
-| `POST /ec2` | EC2 instances |
-| `POST /s3` | S3 buckets |
-| `POST /lambda` | Lambda functions |
-| `POST /rds` | RDS databases |
-| `POST /iam` | IAM users, roles, policies |
-| `POST /vpc` | VPCs and security groups |
-| `POST /dynamodb` | DynamoDB tables |
-| `POST /sqs` | SQS queues |
-| `POST /sns` | SNS topics |
-| `POST /secrets_manager` | Secrets Manager |
-| `POST /parameter_store` | SSM Parameters |
-| `POST /cost` | Cost Explorer data |
-| `POST /security` | Security findings |
-| `POST /activity` | CloudTrail events |
-| `POST /refresh` | Clear cache |
-| `POST /set_timeout` | Set session timeout |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth` | POST | Authenticate with AWS or LocalStack |
+| `/refresh` | POST | Clear cache for fresh data |
+| `/disconnect` | POST | Clear credentials |
+| `/set_timeout` | POST | Set session timeout |
+| `/health` | GET | Health check |
+| `/sync-credentials` | GET | MCP server credential sync |
+| `/ec2` | POST | EC2 instances + CloudWatch metrics |
+| `/s3` | POST | S3 buckets + encryption + object count |
+| `/lambda` | POST | Lambda functions + invocation metrics |
+| `/rds` | POST | RDS instances + connection metrics |
+| `/iam` | POST | IAM users, roles, policies |
+| `/vpc` | POST | VPCs, subnets, security groups |
+| `/cost` | POST | Cost Explorer data (daily, by service, by region) |
+| `/security` | POST | Cross-service security audit |
+| `/activity` | POST | CloudTrail events (last 24h) |
+| `/ebs` | POST | EBS volumes and snapshots |
+| `/route53` | POST | Route 53 hosted zones |
+| `/elb` | POST | Load balancers and target groups |
+| `/auto_scaling` | POST | Auto Scaling groups |
+| `/cloudwatch_dash` | POST | CloudWatch dashboards and alarms |
+| `/ssm` | POST | SSM documents and parameters |
+| `/ecr` | POST | ECR repositories |
+| `/ecs` | POST | ECS clusters and services |
+| `/eks` | POST | EKS clusters |
+| `/cloudformation` | POST | CloudFormation stacks |
+| `/codepipeline` | POST | CodePipeline pipelines |
+| `/codebuild` | POST | CodeBuild projects |
+| `/codedeploy` | POST | CodeDeploy applications |
+| `/secrets_manager` | POST | Secrets Manager secrets |
+| `/parameter_store` | POST | SSM Parameter Store |
+| `/acm` | POST | ACM certificates |
+| `/dynamodb` | POST | DynamoDB tables |
+| `/sns` | POST | SNS topics and subscriptions |
+| `/sqs` | POST | SQS queues |
+| `/eventbridge` | POST | EventBridge rules |
+| `/backup` | POST | AWS Backup vaults and plans |
+| `/budgets` | POST | AWS Budgets |
+| `/dashboard` | POST | Batch: all core services in parallel |
+| `/chat` | POST | AI chatbot endpoint |
+
+---
+
+## Claude Desktop MCP Integration
+
+Connect this platform to Claude Desktop for natural language AWS management.
+
+### Setup
+
+**Step 1: Configure Claude Desktop**
+
+Edit `~/.config/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "aws-devops": {
+      "command": "python3",
+      "args": [
+        "/home/YOUR_USERNAME/MCP_Devops_pro/claude-mcp-server.py"
+      ],
+      "env": {
+        "MCP_BACKEND_URL": "http://127.0.0.1:8085"
+      }
+    }
+  }
+}
+```
+
+**Step 2: Restart Claude Desktop**
+
+**Step 3: Login to Dashboard first** (credentials sync automatically)
+
+**Step 4: Use in Claude Desktop**
+- "List all EC2 instances"
+- "Show me S3 buckets"
+- "Run a security audit"
+- "What's my AWS cost today?"
+
+### Available MCP Tools (22)
+
+| Tool | Description |
+|------|-------------|
+| `list_ec2_instances` | List EC2 with status/type/IP |
+| `get_ec2_instance_status` | Detailed instance + CPU metrics |
+| `stop_ec2_instance` | Stop an EC2 instance |
+| `start_ec2_instance` | Start an EC2 instance |
+| `list_s3_buckets` | List S3 with object counts |
+| `list_s3_objects` | List objects in a bucket |
+| `list_lambda_functions` | List Lambda functions |
+| `invoke_lambda_function` | Invoke a Lambda function |
+| `list_dynamodb_tables` | List DynamoDB tables |
+| `query_dynamodb_table` | Scan a DynamoDB table |
+| `list_sqs_queues` | List SQS queues |
+| `list_iam_users` | List IAM users with MFA |
+| `list_vpcs` | List VPCs with subnets |
+| `list_security_groups` | List security groups with rules |
+| `list_secrets` | List Secrets Manager |
+| `list_sns_topics` | List SNS topics |
+| `get_cost_overview` | Get cost overview |
+| `list_rds_instances` | List RDS databases |
+| `list_ecs_clusters` | List ECS clusters |
+| `list_cloudwatch_alarms` | List CloudWatch alarms |
+| `security_audit` | Cross-service security audit |
+| `sync_dashboard_credentials` | Re-sync from dashboard |
+
+---
+
+## LLM Configuration (Optional)
+
+The chatbot works without any API keys (local AI engine). To enable better AI responses:
+
+### Ollama (Free, Local)
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull a model
+ollama pull qwen2.5:1.5b
+
+# Start Ollama (runs on localhost:11434)
+ollama serve
+```
+
+### Groq (Free, Cloud)
+```bash
+# Get key from https://console.groq.com
+export GROQ_API_KEY="gsk_..."
+```
+
+### Anthropic Claude (Paid, Best Quality)
+```bash
+# Get key from https://console.anthropic.com
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+Set these in `start.sh` or export before running:
+```bash
+export OLLAMA_URL="http://localhost:11434"
+export OLLAMA_MODEL="qwen2.5:1.5b"
+export GROQ_API_KEY=""
+export ANTHROPIC_API_KEY=""
+```
 
 ---
 
 ## Project Structure
 
 ```
-Devops-AI-Agents/
-├── app/
-│   ├── api/v1/aws/          # Next.js API routes (proxy to Python backend)
-│   │   └── route.ts         # Main AWS endpoint
-│   ├── aws-dashboard/       # AWS Dashboard page
-│   │   └── page.tsx         # Main dashboard component
-│   └── page.tsx             # Home page
-├── aws-mcp-server/
-│   ├── server.py            # Python FastAPI + boto3 backend
-│   └── requirements.txt     # Python dependencies
-├── claude-mcp-server.py     # MCP Server for Claude Desktop integration
-├── components/
-│   └── Sidebar.tsx          # Main app sidebar
-├── start.sh                 # One-click startup script
-├── package.json             # Node.js dependencies
-└── README.md                # This file
+MCP_Devops_pro/
+├── app/                              # Next.js App Router
+│   ├── page.tsx                      # Homepage
+│   ├── layout.tsx                    # Root layout
+│   ├── aws-dashboard/page.tsx        # AWS Dashboard (2,172 lines)
+│   ├── ci-cd/page.tsx                # CI/CD Pipeline
+│   ├── cloud-infrastructure/page.tsx # Cloud Infrastructure
+│   ├── code-analysis/page.tsx        # Code Analysis
+│   ├── container-orchestration/      # Container Orchestration
+│   ├── security-scanning/page.tsx    # Security Scanning
+│   ├── performance-monitoring/       # Performance Monitoring
+│   ├── load-testing/page.tsx         # Load Testing
+│   ├── incident-response/page.tsx    # Incident Response
+│   ├── about/page.tsx                # About
+│   └── api/v1/
+│       ├── aws/route.ts              # AWS proxy
+│       ├── chat/route.ts             # Chat proxy
+│       └── mcp/route.ts              # MCP server management
+│
+├── aws-mcp-server/                   # Python Backend
+│   ├── server.py                     # FastAPI server (2,584 lines)
+│   ├── requirements.txt              # Python dependencies
+│   ├── Dockerfile                    # Docker build
+│   └── docker-compose.yml            # Docker compose
+│
+├── claude-mcp-server.py              # MCP Server for Claude Desktop (764 lines)
+│
+├── components/                       # React Components
+│   ├── MultiModalChat.tsx            # AI Chatbot (817 lines)
+│   ├── AgentChat.tsx                 # Agent Chat (894 lines)
+│   ├── Sidebar.tsx                   # Navigation sidebar
+│   ├── ThemeProvider.tsx              # Dark/light theme
+│   └── ...
+│
+├── docs/                             # Documentation
+│   ├── PROJECT_DOCUMENTATION.md      # Full documentation
+│   ├── system_overview.png           # Architecture diagram
+│   └── data_flow.png                 # Data flow diagram
+│
+├── localstack_test/                  # LocalStack demo scripts
+│   ├── setup-enterprise-demo.sh      # Create demo data
+│   └── cleanup-demo.sh               # Clean demo data
+│
+├── start.sh                          # One-click startup
+├── package.json                      # Node.js dependencies
+├── next.config.js                    # Next.js config
+└── tailwind.config.js                # Tailwind config
 ```
 
 ---
 
-## Troubleshooting
+## Tech Stack
 
-### "Python backend not running on port 8085"
-```bash
-# Start the backend manually
-cd aws-mcp-server
-python3 server.py
-```
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Frontend | Next.js | 15.5.20 |
+| Frontend | React | 18.2.0 |
+| Frontend | TypeScript | 5.2.2 |
+| Frontend | Tailwind CSS | 3.3.0 |
+| Frontend | Recharts | 3.9.2 |
+| Frontend | Framer Motion | 10.16.4 |
+| Backend | Python | 3.12+ |
+| Backend | FastAPI | 0.110+ |
+| Backend | boto3 | 1.34+ |
+| Backend | Uvicorn | 0.27+ |
+| MCP | FastMCP | 2.0+ |
+| Infra | LocalStack | 2026.7+ |
+| Infra | Ollama | Latest |
 
-### "npm install fails"
-```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
+---
 
-### "pip3 install fails"
-```bash
-# Upgrade pip first
-pip3 install --upgrade pip
-pip3 install -r aws-mcp-server/requirements.txt
-```
+## Ports
 
-### "LocalStack connection refused"
-```bash
-# Check if LocalStack is running
-docker ps | grep localstack
-
-# Restart if needed
-docker restart localstack-main
-
-# Check logs
-docker logs localstack-main
-```
-
-### "Port 3000 already in use"
-```bash
-# Kill existing process
-lsof -ti:3000 | xargs kill -9
-
-# Or use a different port
-npm run dev -- -p 3001
-```
-
-### "Dashboard shows no data"
-1. Check if backend is running: `curl http://localhost:8085/refresh`
-2. Check browser console for errors
-3. Verify credentials are correct
-4. Try clicking "Disconnect" and reconnect
+| Service | Port | Description |
+|---------|------|-------------|
+| Next.js Frontend | `3000` | Main UI |
+| Python Backend | `8085` | AWS API + Chat |
+| LocalStack | `4566` | Local AWS emulator |
+| Ollama | `11434` | Local LLM server |
+| Dev MCP | `8082` | Dev environment |
+| Staging MCP | `8081` | Staging environment |
+| Prod MCP | `8083` | Production environment |
 
 ---
 
@@ -307,165 +440,126 @@ npm run build
 
 # Run linter
 npm run lint
+
+# Create LocalStack demo data
+cd localstack_test && bash setup-enterprise-demo.sh
+
+# Clean LocalStack demo data
+cd localstack_test && bash cleanup-demo.sh
 ```
 
 ---
 
-## Ports
+## Troubleshooting
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Next.js Frontend | 3000 | Main UI |
-| Python Backend | 8085 | AWS API proxy |
-| LocalStack | 4566 | Local AWS emulator |
-| Dev MCP | 8082 | Dev environment |
-| Staging MCP | 8081 | Staging environment |
-| Prod MCP | 8083 | Production environment |
-
----
-
-## Claude Desktop MCP Integration
-
-Connect this DevOps platform to Claude Desktop as an MCP (Model Context Protocol) server. This lets Claude query your AWS infrastructure directly using natural language.
-
-### Architecture
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Claude Desktop  │────▶│  MCP Server       │────▶│  Python Backend  │
-│  (AI Assistant)  │     │  (claude-mcp-     │     │  (server:8085)   │
-│                  │     │   server.py)      │     │                  │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                               │                         │
-                               ▼                         ▼
-                        ┌──────────────┐         ┌──────────────┐
-                        │  LocalStack   │         │  Real AWS    │
-                        │  (port 4566)  │         │  Account     │
-                        └──────────────┘         └──────────────┘
-```
-
-### How It Works
-1. **Dashboard Login** → Credentials stored in Python backend (memory)
-2. **MCP Server** → Auto-syncs credentials from backend via `/sync-credentials`
-3. **Claude Desktop** → Calls MCP tools → MCP server queries AWS via boto3
-4. **Dashboard Disconnect** → Backend clears credentials → MCP detects disconnection → Claude tools return "Not connected" message
-
-### Step 1: Install Python Dependencies
+### Backend not starting (port 8085 in use)
 ```bash
-pip3 install fastmcp boto3 botocore
+lsof -ti:8085 | xargs kill -9
+cd aws-mcp-server && python3 server.py
 ```
 
-### Step 2: Configure Claude Desktop
-
-Edit `~/.config/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "aws-devops-tools": {
-      "command": "python3",
-      "args": [
-        "/path/to/MCP_Devops_pro/claude-mcp-server.py"
-      ],
-      "env": {
-        "AWS_ACCESS_KEY_ID": "test",
-        "AWS_SECRET_ACCESS_KEY": "test",
-        "AWS_DEFAULT_REGION": "us-east-1"
-      }
-    }
-  }
-}
-```
-
-### Step 3: Restart Claude Desktop
-Close and reopen Claude Desktop to load the MCP server.
-
-### Step 4: Login to Dashboard
-1. Open `http://localhost:3000/aws-dashboard`
-2. Toggle LocalStack ON (for testing) or OFF (for real AWS)
-3. Click **Connect**
-4. Credentials auto-sync to MCP server
-
-### Step 5: Use in Claude Desktop
-Ask Claude questions like:
-- "List all EC2 instances"
-- "Show me S3 buckets"
-- "What Lambda functions are deployed?"
-- "Run a security audit"
-- "Show VPC and security groups"
-
-### Available MCP Tools (25+)
-
-| Tool | Description |
-|------|-------------|
-| `list_ec2_instances` | List all EC2 instances with status, type, IP |
-| `get_ec2_instance_status` | Get detailed instance status + CPU metrics |
-| `stop_ec2_instance` | Stop a running EC2 instance |
-| `start_ec2_instance` | Start a stopped EC2 instance |
-| `list_s3_buckets` | List all S3 buckets with object counts |
-| `list_s3_objects` | List objects in a specific bucket |
-| `list_lambda_functions` | List all Lambda functions |
-| `invoke_lambda_function` | Invoke a Lambda function |
-| `list_dynamodb_tables` | List DynamoDB tables with status |
-| `query_dynamodb_table` | Scan a DynamoDB table |
-| `list_sqs_queues` | List SQS queues with message counts |
-| `list_iam_users` | List IAM users with MFA status |
-| `list_vpcs` | List VPCs with subnets and CIDR blocks |
-| `list_security_groups` | List security groups with rules |
-| `list_secrets` | List Secrets Manager secrets |
-| `list_sns_topics` | List SNS topics |
-| `list_rds_instances` | List RDS databases |
-| `list_ecs_clusters` | List ECS clusters |
-| `list_cloudwatch_alarms` | List CloudWatch alarms |
-| `get_cost_overview` | Get AWS cost overview |
-| `security_audit` | Run security audit across services |
-| `sync_dashboard_credentials` | Re-sync credentials from dashboard |
-| `get_connection_status` | Check current connection status |
-| `configure_localstack` | Switch to LocalStack mode |
-| `configure_aws` | Switch to real AWS mode |
-
-### Credential Sync Flow
-```
-Dashboard Login → POST /auth → Backend stores credentials
-                              ↓
-MCP Server → GET /sync-credentials → Gets credentials from backend
-                              ↓
-Claude Desktop → Calls MCP tool → MCP server uses credentials → Returns result
-
-Dashboard Disconnect → POST /disconnect → Backend clears credentials
-                              ↓
-MCP Server → GET /sync-credentials → connected: false
-                              ↓
-Claude Desktop → Calls MCP tool → Returns "Not connected" error
-```
-
-### Troubleshooting MCP
-
-**MCP server not loading in Claude Desktop:**
+### Frontend not starting (port 3000 in use)
 ```bash
-# Test the MCP server directly
-python3 /path/to/claude-mcp-server.py
-
-# Check syntax
-python3 -c "import ast; ast.parse(open('claude-mcp-server.py').read()); print('OK')"
+lsof -ti:3000 | xargs kill -9
+npm run dev
 ```
 
-**Claude says "Not connected":**
-1. Open dashboard at `http://localhost:3000/aws-dashboard`
-2. Login with credentials
-3. MCP auto-syncs — try again in Claude
+### npm install fails
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
 
-**Permission prompts in Claude Desktop:**
-- Click the dropdown next to "Always allow" → Select "Always allow" for each tool
-- Or go to Settings → Connectors → aws-devops-tools → Enable auto-approve
+### pip3 install fails
+```bash
+pip3 install --upgrade pip
+pip3 install -r aws-mcp-server/requirements.txt
+```
+
+### LocalStack connection refused
+```bash
+# Check if running
+localstack status
+
+# Start it
+localstack start -d
+
+# Create demo data
+cd localstack_test && bash setup-enterprise-demo.sh
+```
+
+### Dashboard shows no data
+1. Check backend: `curl http://localhost:8085/health`
+2. Check browser console for errors
+3. Try disconnect and reconnect
+4. Verify credentials are correct
+
+### "Address already in use" error
+```bash
+# Kill all processes on the port
+lsof -ti:8085 | xargs kill -9
+lsof -ti:3000 | xargs kill -9
+
+# Restart
+bash start.sh
+```
 
 ---
 
-## Tech Stack
+## Environment Variables
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, Recharts
-- **Backend**: Python 3.10+, FastAPI, boto3, FastMCP
-- **MCP Server**: FastMCP, boto3 (Claude Desktop integration)
-- **Infrastructure**: Docker, LocalStack (optional)
+Set in `start.sh` or export before running:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama LLM server |
+| `OLLAMA_MODEL` | `qwen2.5:1.5b` | Ollama model name |
+| `GROQ_API_KEY` | `""` | Groq API key (optional) |
+| `ANTHROPIC_API_KEY` | `""` | Anthropic API key (optional) |
+| `MCP_BACKEND_URL` | `http://127.0.0.1:8085` | Backend URL for MCP sync |
+
+---
+
+## Quick Reference Card
+
+```
+START:    bash start.sh
+STOP:     Ctrl+C
+OPEN:     http://localhost:3000
+BACKEND:  http://localhost:8085
+HEALTH:   curl http://localhost:8085/health
+
+LOCALSTACK:
+  Access Key: test
+  Secret Key: test
+  Region:     us-east-1
+  Toggle:     ON
+
+AWS:
+  Access Key: AKIA... (your key)
+  Secret Key: ...     (your secret)
+  Region:     us-east-1 (your region)
+  Toggle:     OFF
+
+CHATBOT:
+  "list ec2 instances"
+  "security analysis"
+  "cost analysis"
+  "health check"
+  "help"
+
+MCP (Claude Desktop):
+  Config: ~/.config/Claude/claude_desktop_config.json
+  Tools:  22 AWS management tools
+```
+
+---
+
+## Documentation
+
+- [Full Documentation](docs/PROJECT_DOCUMENTATION.md) — Complete project docs (1,354 lines)
+- [System Overview](docs/system_overview.png) — Architecture diagram
+- [Data Flow](docs/data_flow.png) — Request/response flow
 
 ---
 
@@ -475,68 +569,10 @@ MIT
 
 ---
 
-## Quick Reference Card (Print This!)
-
-### Start the project:
-```bash
-cd Devops-AI-Agents
-bash start.sh
-```
-
-### Open in browser:
-```
-http://localhost:3000
-```
-
-### Stop the project:
-Press `Ctrl+C` in the terminal
-
-### If something breaks:
-```bash
-# Kill all Node processes
-pkill -f "next dev"
-
-# Kill Python backend
-pkill -f "server.py"
-
-# Restart
-bash start.sh
-```
-
-### LocalStack test credentials:
-- Access Key: `test`
-- Secret Key: `test`
-- Region: `us-east-1`
-- Toggle: ON
-
-### AWS credentials:
-- Access Key: `AKIA...` (your real key)
-- Secret Key: `...` (your real secret)
-- Region: `ap-south-1` (or your region)
-- Toggle: OFF
-
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env.local` and update the paths:
-```bash
-cp .env.example .env.local
-```
-
-Update these lines with your paths:
-```
-MCP_DEV_WORKSPACE=/home/YOUR_USERNAME/workspaces/dev
-MCP_STAGING_WORKSPACE=/home/YOUR_USERNAME/workspaces/staging
-MCP_PROD_WORKSPACE=/home/YOUR_USERNAME/workspaces/prod
-```
-
----
-
 ## Support
 
 If you face any issues:
-1. Check the Troubleshooting section above
-2. Check if all services are running
+1. Check the [Troubleshooting](#troubleshooting) section
+2. Check if all services are running (`curl http://localhost:8085/health`)
 3. Check browser console for errors
 4. Check terminal for Python/Node errors
