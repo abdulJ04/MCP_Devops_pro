@@ -21,6 +21,7 @@ logger = logging.getLogger("aws-mcp-server")
 # Cost Alert System
 from models import init_db
 from cost_alerts import router as cost_alerts_router
+from cost_reports import router as cost_reports_router
 from scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="AWS MCP Server", version="2.0.0")
@@ -35,6 +36,7 @@ app.add_middleware(
 
 # Register cost alert routes
 app.include_router(cost_alerts_router)
+app.include_router(cost_reports_router)
 
 
 @app.on_event("startup")

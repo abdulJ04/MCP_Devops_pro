@@ -28,6 +28,9 @@ import {
 import MultiModalChat from "../../components/MultiModalChat";
 import CostAlertBanner from "../../components/CostAlertBanner";
 import CostAlertConfig from "../../components/CostAlertConfig";
+import CostReportConfig from "../../components/CostReportConfig";
+import CostReportHistory from "../../components/CostReportHistory";
+import CostReportGoogleSheets from "../../components/CostReportGoogleSheets";
 import {
   LineChart,
   Line,
@@ -107,11 +110,14 @@ const SIDEBAR_CATEGORIES: SidebarCategory[] = [
     { id: "sqs", label: "SQS", icon: BsActivity },
     { id: "eventbridge", label: "EventBridge", icon: BsActivity },
   ]},
-  { id: "cost", label: "Cost Management", icon: BsGraphUp, tabs: [
-    { id: "cost", label: "Cost Explorer", icon: BsGraphUp },
-    { id: "budgets", label: "Budgets", icon: BsGraphUp },
-    { id: "cost_alerts", label: "Cost Alerts", icon: BsExclamationTriangle },
-  ]},
+    { id: "cost", label: "Cost Management", icon: BsGraphUp, tabs: [
+      { id: "cost", label: "Cost Explorer", icon: BsGraphUp },
+      { id: "budgets", label: "Budgets", icon: BsGraphUp },
+      { id: "cost_alerts", label: "Cost Alerts", icon: BsExclamationTriangle },
+      { id: "cost_reports", label: "Cost Reports", icon: BsDownload },
+      { id: "cost_report_config", label: "Report Settings", icon: BsGear },
+      { id: "cost_report_gsheets", label: "Google Sheets", icon: BsGear },
+    ]},
   { id: "compliance", label: "Compliance", icon: BsBug, tabs: [
     { id: "cloudtrail", label: "CloudTrail", icon: BsBug },
     { id: "backup", label: "AWS Backup", icon: BsCloud },
@@ -2033,6 +2039,9 @@ export default function AWSDashboardPage() {
       case "backup": return <BackupTab data={backupData} />;
       case "cost": return <CostTab costData={costDataState} />;
       case "cost_alerts": return <CostAlertConfig credentials={credentials} />;
+      case "cost_reports": return <CostReportHistory />;
+      case "cost_report_config": return <CostReportConfig />;
+      case "cost_report_gsheets": return <CostReportGoogleSheets />;
       case "budgets": return <BudgetsTab data={budgetsData} />;
       case "security": return <SecurityTab findings={findings} buckets={s3Data} users={iamUsers} />;
       case "cloudtrail": return <CloudTrailTab events={trailEvents} />;
@@ -2162,6 +2171,7 @@ export default function AWSDashboardPage() {
                   else if (["codedeploy", "deploy"].some(k => q.includes(k))) setActiveTab("codedeploy");
                   else if (["backup", "vault"].some(k => q.includes(k))) setActiveTab("backup");
                   else if (["budget"].some(k => q.includes(k))) setActiveTab("budgets");
+                  else if (["report", "reports"].some(k => q.includes(k))) setActiveTab("cost_reports");
                   else if (["trail", "cloudtrail", "audit", "log"].some(k => q.includes(k))) setActiveTab("cloudtrail");
                   else if (["acm", "certificate", "ssl", "tls"].some(k => q.includes(k))) setActiveTab("acm");
                   else if (["event", "eventbridge"].some(k => q.includes(k))) setActiveTab("eventbridge");

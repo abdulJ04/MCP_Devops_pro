@@ -6,3 +6,5 @@ mangum>=0.17.0
 pydantic>=2.0.0
 sqlalchemy>=2.0.0
 apscheduler>=3.10.0
+google-api-python-client>=2.0.0
+google-auth>=2.0.0

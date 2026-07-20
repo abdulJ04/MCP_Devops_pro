@@ -150,6 +150,112 @@ def _config_to_dict(config):
     }
 
 
+def report_generation_job():
+    """Background job: generate and send scheduled cost reports."""
+    try:
+        from models import get_report_config
+        config = get_report_config()
+        if not config.is_enabled:
+            logger.info("Cost reports disabled -- skipping")
+            return
+
+        from cost_reports import generate_report_data, send_report_email
+        from models import get_config as get_alert_config, add_report_history
+        import json
+
+        report_data = generate_report_data(config.report_type)
+
+        alert_config = get_alert_config()
+        email_config = {
+            "smtp_host": alert_config.smtp_host,
+            "smtp_port": alert_config.smtp_port,
+            "smtp_user": alert_config.smtp_user,
+            "smtp_password": alert_config.smtp_password,
+            "recipients": config.recipients,
+        }
+        email_sent = send_report_email(report_data, email_config)
+
+        add_report_history(
+            report_type=report_data["report_type"],
+            report_date=report_data["report_date"],
+            period_start=report_data["period_start"],
+            period_end=report_data["period_end"],
+            total_cost=report_data["total_cost"],
+            yesterday_cost=report_data["yesterday_cost"],
+            month_cost=report_data.get("total_cost", 0),
+            forecast=report_data["forecast"],
+            top_services_json=json.dumps(report_data["top_services"]),
+            region_breakdown_json=json.dumps(report_data["region_breakdown"]),
+            anomaly_score=report_data["anomaly_score"],
+            anomaly_details=report_data["anomaly_details"],
+            email_sent=email_sent,
+            email_recipients=config.recipients,
+            source=report_data["source"],
+        )
+
+        logger.info(f"Scheduled {config.report_type} report generated: ${report_data['total_cost']:.2f}")
+
+    except Exception as e:
+        logger.error(f"Report generation job failed: {e}")
+
+
+def reschedule_report_job():
+    """Reschedule the report job based on current config."""
+    try:
+        from models import get_report_config
+        config = get_report_config()
+
+        try:
+            scheduler.remove_job("cost_report")
+        except Exception:
+            pass
+
+        if not config.is_enabled:
+            logger.info("Report scheduling disabled -- no job added")
+            return
+
+        hour = config.schedule_hour
+        minute = config.schedule_minute
+
+        if config.report_type == "daily":
+            scheduler.add_job(
+                report_generation_job,
+                "cron",
+                hour=hour,
+                minute=minute,
+                id="cost_report",
+                replace_existing=True,
+                max_instances=1,
+            )
+        elif config.report_type == "weekly":
+            scheduler.add_job(
+                report_generation_job,
+                "cron",
+                day_of_week=config.schedule_day_of_week,
+                hour=hour,
+                minute=minute,
+                id="cost_report",
+                replace_existing=True,
+                max_instances=1,
+            )
+        elif config.report_type == "monthly":
+            scheduler.add_job(
+                report_generation_job,
+                "cron",
+                day=config.schedule_day_of_month,
+                hour=hour,
+                minute=minute,
+                id="cost_report",
+                replace_existing=True,
+                max_instances=1,
+            )
+
+        logger.info(f"Report job scheduled: {config.report_type} at {hour:02d}:{minute:02d}")
+
+    except Exception as e:
+        logger.error(f"Failed to reschedule report job: {e}")
+
+
 def start_scheduler():
     """Start the background scheduler."""
     try:
@@ -162,7 +268,11 @@ def start_scheduler():
             max_instances=1,
         )
         scheduler.start()
-        logger.info("Cost alert scheduler started (1-hour interval)")
+        try:
+            reschedule_report_job()
+        except Exception:
+            pass
+        logger.info("Cost alert + report scheduler started")
     except Exception as e:
         logger.error(f"Failed to start scheduler: {e}")
 
