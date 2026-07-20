@@ -26,6 +26,8 @@ import {
   BsArrowLeft,
 } from "react-icons/bs";
 import MultiModalChat from "../../components/MultiModalChat";
+import CostAlertBanner from "../../components/CostAlertBanner";
+import CostAlertConfig from "../../components/CostAlertConfig";
 import {
   LineChart,
   Line,
@@ -108,6 +110,7 @@ const SIDEBAR_CATEGORIES: SidebarCategory[] = [
   { id: "cost", label: "Cost Management", icon: BsGraphUp, tabs: [
     { id: "cost", label: "Cost Explorer", icon: BsGraphUp },
     { id: "budgets", label: "Budgets", icon: BsGraphUp },
+    { id: "cost_alerts", label: "Cost Alerts", icon: BsExclamationTriangle },
   ]},
   { id: "compliance", label: "Compliance", icon: BsBug, tabs: [
     { id: "cloudtrail", label: "CloudTrail", icon: BsBug },
@@ -586,7 +589,22 @@ function OverviewTab({ ec2, s3, lambda, rds, findings, costData, trailEvents, cl
   ], [ec2, s3, lambda, rds, runningInstances, stoppedInstances]);
 
   const serviceBreakdown = useMemo(() => {
-    return costData.byService.map(s => ({ ...s, cost: Number(s.cost.toFixed(2)) }));
+    const nameMap: Record<string, string> = {
+      "Amazon Elastic Compute Cloud - Compute": "EC2",
+      "Amazon Relational Database Service": "RDS",
+      "Amazon Simple Storage Service": "S3",
+      "Amazon Lambda": "Lambda",
+      "Amazon CloudFront": "CloudFront",
+      "Amazon ElastiCache": "ElastiCache",
+      "Amazon Route 53": "Route53",
+      "Amazon Simple Queue Service": "SQS",
+      "Other": "Other",
+    };
+    return costData.byService.map(s => ({
+      ...s,
+      service: nameMap[s.service] || s.service,
+      cost: Number(s.cost.toFixed(2)),
+    }));
   }, [costData]);
 
   return (
@@ -701,13 +719,13 @@ function OverviewTab({ ec2, s3, lambda, rds, findings, costData, trailEvents, cl
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Cost by Service</h3>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={260}>
             <PieChart>
-              <Pie data={serviceBreakdown} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="cost" nameKey="service">
+              <Pie data={serviceBreakdown} cx="50%" cy="45%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="cost" nameKey="service">
                 {serviceBreakdown.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
               </Pie>
               <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#f9fafb" }} />
-              <Legend wrapperStyle={{ fontSize: "11px" }} />
+              <Legend wrapperStyle={{ fontSize: "10px", lineHeight: "16px" }} layout="horizontal" verticalAlign="bottom" align="center" />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -757,7 +775,7 @@ function OverviewTab({ ec2, s3, lambda, rds, findings, costData, trailEvents, cl
       </div>
 
       {/* Row 5: Health Status (Detailed) */}
-      <Card className="p-4">
+      <Card className="p-4 mb-0">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Service Health</h3>
           <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
@@ -2014,6 +2032,7 @@ export default function AWSDashboardPage() {
       case "eventbridge": return <EventBridgeTab data={ebData} />;
       case "backup": return <BackupTab data={backupData} />;
       case "cost": return <CostTab costData={costDataState} />;
+      case "cost_alerts": return <CostAlertConfig credentials={credentials} />;
       case "budgets": return <BudgetsTab data={budgetsData} />;
       case "security": return <SecurityTab findings={findings} buckets={s3Data} users={iamUsers} />;
       case "cloudtrail": return <CloudTrailTab events={trailEvents} />;
@@ -2158,7 +2177,8 @@ export default function AWSDashboardPage() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-[#f0f0f5] dark:bg-[#1e2128]">
+        <main className="flex-1 p-4 md:px-6 md:pt-6 md:pb-2 overflow-y-auto bg-[#f0f0f5] dark:bg-[#1e2128]">
+          <CostAlertBanner credentials={credentials} />
           {renderTab()}
         </main>
       </div>

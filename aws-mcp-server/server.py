@@ -18,6 +18,11 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("aws-mcp-server")
 
+# Cost Alert System
+from models import init_db
+from cost_alerts import router as cost_alerts_router
+from scheduler import start_scheduler, stop_scheduler
+
 app = FastAPI(title="AWS MCP Server", version="2.0.0")
 
 app.add_middleware(
@@ -27,6 +32,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register cost alert routes
+app.include_router(cost_alerts_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    start_scheduler()
+    logger.info("Cost alert system initialized (SQLite DB + APScheduler)")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_scheduler()
+    logger.info("Cost alert scheduler stopped")
 
 EXECUTOR = ThreadPoolExecutor(max_workers=20)
 _creds_lock = threading.RLock()
@@ -719,6 +740,13 @@ async def cost_info(request: dict = {}):
     cached = _cached("cost", METRICS_TTL)
     if cached:
         return cached
+
+    # Use mock data for LocalStack (Cost Explorer not supported in free tier)
+    if _credentials.get("use_localstack"):
+        from mock_cost import get_mock_cost_data
+        result = get_mock_cost_data()
+        _set_cache("cost", result)
+        return result
 
     result = {"today": 0, "yesterday": 0, "month": 0, "forecast": 0, "daily": [], "byService": [], "byRegion": []}
 
@@ -1610,8 +1638,15 @@ async def budgets_info(request: dict = {}):
         return cached
 
     result = {"budgets": []}
+
+    # Use mock budgets for LocalStack
+    if _credentials.get("use_localstack", False):
+        from mock_cost import get_mock_budgets
+        result["budgets"] = get_mock_budgets()
+        _set_cache("budgets", result)
+        return result
+
     try:
-        # Get account ID from STS
         sts = _get_client("sts")
         identity = sts.get_caller_identity()
         account_id = identity.get("Account", "")
