@@ -364,7 +364,7 @@ function AuthScreen({ onConnect }: { onConnect: (creds: AWSCredentials) => void 
         if (!accessKeyId || !secretAccessKey) { setError("Please fill in Access Key ID and Secret Access Key"); setLoading(false); return; }
         const body: any = { action: "auth", accessKeyId, secretAccessKey, region, timeout: sessionTimeout };
         if (sessionToken.trim()) body.sessionToken = sessionToken.trim();
-        const res = await fetch("/api/v1/aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const res = await fetch("/api/v1/aws", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
         const data = await res.json();
         if (!res.ok || data.success === false) throw new Error(data.detail || data.error || "Authentication failed");
         onConnect({ accessKeyId, secretAccessKey, sessionToken, region, useLocalstack: false, sessionTimeout });

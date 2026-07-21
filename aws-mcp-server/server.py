@@ -93,6 +93,9 @@ def _get_client(service: str):
         kwargs = {"region_name": _credentials.get("aws_region", "us-east-1")}
         if _credentials.get("use_localstack"):
             kwargs["endpoint_url"] = _credentials.get("endpoint_url", "http://localhost:4566")
+            kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=10)
+        else:
+            kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 2})
     return _get_session().client(service, **kwargs)
 
 
@@ -249,7 +252,8 @@ async def auth(req: AuthRequest):
                     "region_name": req.get_region(),
                 }
                 test_session = boto3.Session(**test_session_kwargs)
-                sts = test_session.client("sts", endpoint_url=req.endpoint_url or "http://localhost:4566")
+                sts = test_session.client("sts", endpoint_url=req.endpoint_url or "http://localhost:4566",
+                                          config=boto3.session.Config(connect_timeout=5, read_timeout=10, retries={"max_attempts": 1}))
                 identity = sts.get_caller_identity()
                 _credentials = {
                     "aws_access_key": "test",
@@ -281,7 +285,7 @@ async def auth(req: AuthRequest):
                 aws_session_token=session_token,
                 region_name=aws_region,
             )
-            sts = session.client("sts")
+            sts = session.client("sts", config=boto3.session.Config(connect_timeout=5, read_timeout=10, retries={"max_attempts": 1}))
             identity = sts.get_caller_identity()
             logger.info(f"Auth success: Account={identity.get('Account')}, ARN={identity.get('Arn')}")
             _credentials = {
