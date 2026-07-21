@@ -1,7 +1,12 @@
 """Google Sheets integration via Apps Script Web App.
 
-Google Apps Script Web Apps redirect POST to script.googleusercontent.com.
-We must follow the redirect and POST directly to the final URL.
+Google Apps Script redirect chain:
+  POST to script.google.com/macros/s/{ID}/exec
+    → 302 redirect to script.googleusercontent.com/macros/echo?...
+    → GET the echo URL to read response
+
+The echo URL stores POST data server-side via user_content_key,
+then serves the script's response via GET.
 """
 import json
 import logging
@@ -14,13 +19,12 @@ logger = logging.getLogger("cost-reports")
 
 
 def _post_to_apps_script(apps_script_url: str, payload: dict) -> dict:
-    """POST JSON to Apps Script URL, following Google's redirect chain.
+    """POST JSON to Apps Script URL, then GET the response from the redirect.
 
-    Google Apps Script redirects:
-      script.google.com/macros/s/{ID}/exec
-        → 302 → script.googleusercontent.com/macros/echo?...
-
-    We extract the final URL and POST directly to it.
+    Google Apps Script pattern:
+      1. POST to script.google.com/macros/s/{ID}/exec with JSON body
+      2. Follow 302 redirect to script.googleusercontent.com/macros/echo?...
+      3. GET the echo URL to read the script's response
     """
     context = ssl.create_default_context()
     body = json.dumps(payload).encode("utf-8")
@@ -29,32 +33,35 @@ def _post_to_apps_script(apps_script_url: str, payload: dict) -> dict:
         "Content-Length": str(len(body)),
     }
 
-    # Step 1: Follow initial redirect to get final URL
+    # Step 1: POST to the exec URL (triggers the script)
     parsed = urllib.parse.urlparse(apps_script_url)
     conn = http.client.HTTPSConnection(parsed.hostname, context=context, timeout=30)
     conn.request("POST", parsed.path, body=body, headers=headers)
     resp = conn.getresponse()
 
-    if resp.status in (301, 302, 303, 307):
-        location = resp.getheader("Location", "")
+    if resp.status not in (301, 302, 303, 307):
+        response_body = resp.read().decode("utf-8")
         conn.close()
+        raise Exception(f"Expected redirect, got HTTP {resp.status}: {response_body[:200]}")
 
-        if not location:
-            raise Exception("Redirect with no Location header")
+    location = resp.getheader("Location", "")
+    resp.read()  # Drain the redirect response body
+    conn.close()
 
-        # Parse the redirect URL
-        parsed_loc = urllib.parse.urlparse(location)
-        final_host = parsed_loc.hostname
-        final_path = parsed_loc.path
-        if parsed_loc.query:
-            final_path += "?" + parsed_loc.query
+    if not location:
+        raise Exception("Redirect with no Location header")
 
-        # Step 2: POST directly to the final URL
-        conn = http.client.HTTPSConnection(final_host, context=context, timeout=30)
-        conn.request("POST", final_path, body=body, headers=headers)
-        resp = conn.getresponse()
+    # Step 2: GET the redirect URL (reads the script's response)
+    parsed_loc = urllib.parse.urlparse(location)
+    final_host = parsed_loc.hostname
+    final_path = parsed_loc.path
+    if parsed_loc.query:
+        final_path += "?" + parsed_loc.query
 
-    # Read response
+    conn = http.client.HTTPSConnection(final_host, context=context, timeout=30)
+    conn.request("GET", final_path)
+    resp = conn.getresponse()
+
     response_body = resp.read().decode("utf-8")
     status = resp.status
     conn.close()
@@ -62,7 +69,7 @@ def _post_to_apps_script(apps_script_url: str, payload: dict) -> dict:
     if status != 200:
         raise Exception(f"HTTP {status}: {response_body[:300]}")
 
-    # Try to extract JSON from response (might be wrapped in HTML)
+    # Extract JSON from response (might be wrapped in HTML)
     json_match = re.search(r'\{.*\}', response_body, re.DOTALL)
     if json_match:
         try:
