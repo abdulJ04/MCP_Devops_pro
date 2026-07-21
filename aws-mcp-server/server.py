@@ -650,7 +650,7 @@ async def iam_info(request: dict = {}):
                 for k in keys:
                     create = k.get("CreateDate")
                     if create:
-                        age = (datetime.now(timezone.utc) - create.replace(tzinfo=None)).days
+                        age = (datetime.now(timezone.utc) - create).days
                         if age > item["accessKeyAge"]:
                             item["accessKeyAge"] = age
             except Exception:
@@ -1817,11 +1817,11 @@ def _analyze_security(data: dict) -> str:
     if iam_users:
         report += "## IAM Users\n"
         report += f"**Total Users:** {len(iam_users)}\n\n"
-        mfa_disabled = [u for u in iam_users if not u.get("mfa_enabled", False)]
+        mfa_disabled = [u for u in iam_users if not u.get("mfaEnabled", False)]
         if mfa_disabled:
             report += f"**Risk Level: HIGH** | {len(mfa_disabled)} users without MFA\n\n"
             for u in mfa_disabled[:5]:
-                report += f"- `{u.get('username', 'unknown')}` - MFA not enabled\n"
+                report += f"- `{u.get('name', 'unknown')}` - MFA not enabled\n"
             report += "\n**Recommendation:** Enable MFA on all IAM users, especially admin accounts.\n\n"
             score -= len(mfa_disabled) * 12
             issues.append(f"{len(mfa_disabled)} IAM users without MFA")
@@ -1985,7 +1985,7 @@ def _analyze_architecture(data: dict) -> str:
             report += "## Database Redundancy\n"
             report += f"**Risk: MEDIUM** | {len(single_az_rds)} RDS instances without Multi-AZ\n\n"
             for db in single_az_rds[:3]:
-                report += f"- `{db.get('identifier', 'unknown')}` - Single-AZ\n"
+                report += f"- `{db.get('name', 'unknown')}` - Single-AZ\n"
             report += "\n**Recommendation:** Enable Multi-AZ for production databases.\n\n"
             score -= 15
             issues.append(f"{len(single_az_rds)} RDS instances without Multi-AZ")
@@ -2269,7 +2269,7 @@ async def chat(request: dict = {}):
                 instance_id = id_match.group(1)
                 tools_used.append("stop_ec2_instance")
                 loop = asyncio.get_running_loop()
-                ec2 = get_client("ec2")
+                ec2 = _get_client("ec2")
                 await loop.run_in_executor(EXECUTOR, lambda: ec2.stop_instances(InstanceIds=[instance_id]))
                 response = f"Instance **{instance_id}** stop command sent."
             else:
@@ -2281,7 +2281,7 @@ async def chat(request: dict = {}):
                 instance_id = id_match.group(1)
                 tools_used.append("start_ec2_instance")
                 loop = asyncio.get_running_loop()
-                ec2 = get_client("ec2")
+                ec2 = _get_client("ec2")
                 await loop.run_in_executor(EXECUTOR, lambda: ec2.start_instances(InstanceIds=[instance_id]))
                 response = f"Instance **{instance_id}** start command sent."
             else:

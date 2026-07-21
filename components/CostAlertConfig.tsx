@@ -52,6 +52,7 @@ export default function CostAlertConfig({ credentials, onConfigSaved }: CostAler
     try {
       const res = await fetch("/api/v1/cost-alert/config");
       const data = await res.json();
+      if (data.smtp_password === "***") data.smtp_password = "";
       setConfig(data);
     } catch (err) {
       console.error("Failed to load alert config:", err);

@@ -32,15 +32,15 @@ export default function CostAlertBanner({ credentials }: CostAlertBannerProps) {
     checkAlertStatus();
     const interval = setInterval(checkAlertStatus, 300000);
     return () => clearInterval(interval);
-  }, []);
+  }, [status?.daily_alert, status?.monthly_alert]);
 
   const checkAlertStatus = async () => {
     try {
       const res = await fetch("/api/v1/cost-alert/status");
       const data = await res.json();
       setStatus(data);
-      setDismissedDaily(false);
-      setDismissedMonthly(false);
+      if (!data.daily_alert) setDismissedDaily(false);
+      if (!data.monthly_alert) setDismissedMonthly(false);
     } catch (err) {
       console.error("Failed to check alert status:", err);
     }

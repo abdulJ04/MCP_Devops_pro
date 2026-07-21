@@ -2,7 +2,6 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
-  swcMinify: true,
   devIndicators: false,
   env: {
     OPENCLAW_HOST: process.env.OPENCLAW_HOST || 'localhost',

@@ -43,7 +43,9 @@ async def save_alert_config(request: dict = {}):
     if "smtp_user" in request:
         update_fields["smtp_user"] = request["smtp_user"]
     if "smtp_password" in request:
-        update_fields["smtp_password"] = request["smtp_password"]
+        pwd = request["smtp_password"]
+        if pwd and pwd != "***":
+            update_fields["smtp_password"] = pwd
     if "is_active" in request:
         update_fields["is_active"] = bool(request["is_active"])
 
