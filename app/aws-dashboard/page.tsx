@@ -1107,7 +1107,7 @@ function IAMTab({ users, roles, policies }: { users: IAMUser[]; roles: IAMRole[]
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={BsKey} label="Total Users" value={users.length} color="blue" />
-        <StatCard icon={BsShieldCheck} label="MFA Enabled" value={`${Math.round((mfaEnabledCount / users.length) * 100)}%`} color="green" />
+        <StatCard icon={BsShieldCheck} label="MFA Enabled" value={users.length > 0 ? `${Math.round((mfaEnabledCount / users.length) * 100)}%` : "N/A"} color="green" />
         <StatCard icon={BsKey} label="Unused Keys (>90d)" value={unusedKeys} trend={unusedKeys > 0 ? "Rotate keys" : "All current"} trendUp={unusedKeys === 0} color={unusedKeys > 0 ? "yellow" : "green"} />
         <StatCard icon={BsXCircle} label="Inactive Users" value={inactiveUsers} color={inactiveUsers > 0 ? "red" : "green"} />
       </div>

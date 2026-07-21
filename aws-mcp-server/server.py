@@ -34,6 +34,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Global exception handler — prevents server crashes from unhandled errors
+# Does NOT catch HTTPException (FastAPI handles those natively)
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    from fastapi.exceptions import HTTPException
+    from starlette.responses import JSONResponse
+    if isinstance(exc, HTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    logger.error(f"Unhandled error on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=200,
+        content={"error": str(exc)},
+    )
+
 # Register cost alert routes
 app.include_router(cost_alerts_router)
 app.include_router(cost_reports_router)
@@ -400,7 +414,8 @@ async def ec2_instances(request: dict = {}):
             if isinstance(r, dict):
                 result["instances"].append(r)
 
-    except ClientError as e:
+    except Exception as e:
+        logger.error(f"EC2 error: {e}")
         result["error"] = str(e)
 
     _set_cache("ec2", result)
@@ -475,7 +490,7 @@ async def s3_buckets(request: dict = {}):
             if isinstance(r, dict):
                 result["buckets"].append(r)
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("s3", result)
@@ -548,7 +563,7 @@ async def lambda_functions(request: dict = {}):
             if isinstance(r, dict):
                 result["functions"].append(r)
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("lambda", result)
@@ -611,7 +626,7 @@ async def rds_instances(request: dict = {}):
             if isinstance(r, dict):
                 result["databases"].append(r)
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("rds", result)
@@ -680,7 +695,7 @@ async def iam_info(request: dict = {}):
                 "usageCount": p.get("AttachmentCount", 0),
             })
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("iam", result)
@@ -733,7 +748,7 @@ async def vpc_info(request: dict = {}):
                 "outboundRules": len(sg.get("IpPermissionsEgress", [])),
             })
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("vpc", result)
@@ -815,7 +830,7 @@ async def cost_info(request: dict = {}):
                 "value": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
             })
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("cost", result)
@@ -908,7 +923,7 @@ async def security_findings(request: dict = {}):
         except Exception:
             pass
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("security", result)
@@ -953,7 +968,7 @@ async def activity_timeline(request: dict = {}):
                 "status": "Success",
             })
 
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("activity", result)
@@ -998,7 +1013,7 @@ async def ebs_volumes(request: dict = {}):
                 "size": s.get("VolumeSize", 0),
                 "startTime": s.get("StartTime", "").isoformat() if s.get("StartTime") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("ebs", result)
@@ -1030,7 +1045,7 @@ async def route53_info(request: dict = {}):
                 "id": hc["Id"], "name": hc.get("HealthCheckConfig", {}).get("FullyQualifiedDomainName", ""),
                 "status": hc.get("HealthCheckConfig", {}).get("Type", ""),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("route53", result)
@@ -1069,7 +1084,7 @@ async def elb_info(request: dict = {}):
                 "vpcId": tg.get("VpcId", ""),
                 "targetCount": tg.get("TargetHealthDescriptions", []) and len(tg["TargetHealthDescriptions"]),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("elb", result)
@@ -1105,7 +1120,7 @@ async def auto_scaling_info(request: dict = {}):
                 "status": a.get("StatusCode", ""),
                 "startTime": a.get("StartTime", "").isoformat() if a.get("StartTime") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("auto_scaling", result)
@@ -1141,7 +1156,7 @@ async def cloudwatch_dashboards(request: dict = {}):
                 "namespace": a.get("Namespace", ""),
                 "threshold": a.get("Threshold", 0),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("cloudwatch_dash", result)
@@ -1177,7 +1192,7 @@ async def ssm_info(request: dict = {}):
                 "version": p.get("Version", 0),
                 "lastModified": p.get("LastModifiedDate", "").isoformat() if p.get("LastModifiedDate") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("ssm", result)
@@ -1202,7 +1217,7 @@ async def ecr_info(request: dict = {}):
                 "uri": r.get("repositoryUri", ""),
                 "createdAt": r.get("createdAt", "").isoformat() if r.get("createdAt") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("ecr", result)
@@ -1237,7 +1252,7 @@ async def ecs_info(request: dict = {}):
                         })
             except Exception:
                 pass
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("ecs", result)
@@ -1267,7 +1282,7 @@ async def eks_info(request: dict = {}):
                 })
             except Exception:
                 result["clusters"].append({"name": name, "status": "unknown"})
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("eks", result)
@@ -1295,7 +1310,7 @@ async def cloudformation_info(request: dict = {}):
                 "creationTime": s.get("CreationTime", "").isoformat() if s.get("CreationTime") else "",
                 "lastUpdatedTime": s.get("LastUpdatedTime", "").isoformat() if s.get("LastUpdatedTime") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("cloudformation", result)
@@ -1319,7 +1334,7 @@ async def codepipeline_info(request: dict = {}):
                 "arn": p.get("arn", ""),
                 "version": p.get("version", 0),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("codepipeline", result)
@@ -1339,7 +1354,7 @@ async def codebuild_info(request: dict = {}):
         projects = cb.list_projects().get("projects", [])
         for name in projects:
             result["projects"].append({"name": name})
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("codebuild", result)
@@ -1371,7 +1386,7 @@ async def codedeploy_info(request: dict = {}):
                 })
             except Exception:
                 pass
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("codedeploy", result)
@@ -1397,7 +1412,7 @@ async def secrets_manager_info(request: dict = {}):
                 "createdDate": s.get("CreatedDate", "").isoformat() if s.get("CreatedDate") else "",
                 "lastChanged": s.get("LastChangedDate", "").isoformat() if s.get("LastChangedDate") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("secrets_manager", result)
@@ -1423,7 +1438,7 @@ async def parameter_store_info(request: dict = {}):
                 "version": p.get("Version", 0),
                 "lastModified": p.get("LastModifiedDate", "").isoformat() if p.get("LastModifiedDate") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("parameter_store", result)
@@ -1448,7 +1463,7 @@ async def acm_info(request: dict = {}):
                 "status": c.get("Status", ""),
                 "type": c.get("Type", ""),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("acm", result)
@@ -1478,7 +1493,7 @@ async def dynamodb_info(request: dict = {}):
                 })
             except Exception:
                 result["tables"].append({"name": name, "status": "unknown"})
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("dynamodb", result)
@@ -1510,7 +1525,7 @@ async def sns_info(request: dict = {}):
                 "protocol": s.get("Protocol", ""),
                 "topicArn": s.get("TopicArn", ""),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("sns", result)
@@ -1543,7 +1558,7 @@ async def sqs_info(request: dict = {}):
                 })
             except Exception:
                 result["queues"].append({"name": name, "url": url, "messagesAvailable": 0, "messagesInFlight": 0})
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("sqs", result)
@@ -1577,7 +1592,7 @@ async def eventbridge_info(request: dict = {}):
                 "name": b["Name"],
                 "arn": b.get("Arn", ""),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("eventbridge", result)
@@ -1629,7 +1644,7 @@ async def backup_info(request: dict = {}):
                 "resource": j.get("ResourceArn", ""),
                 "startTime": j.get("CreationDate", "").isoformat() if j.get("CreationDate") else "",
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("backup", result)
@@ -1670,7 +1685,7 @@ async def budgets_info(request: dict = {}):
                 "amount": b.get("BudgetLimit", {}).get("Amount", "0"),
                 "spent": b.get("CalculatedSpend", {}).get("ActualSpend", {}).get("Amount", "0"),
             })
-    except ClientError as e:
+    except Exception as e:
         result["error"] = str(e)
 
     _set_cache("budgets", result)
@@ -1785,7 +1800,7 @@ def _analyze_security(data: dict) -> str:
     unencrypted_buckets = []
     public_buckets = []
     for bucket in s3_buckets:
-        name = bucket.get("Name", "")
+        name = bucket.get("name", "")
         # Check encryption from findings
         for f in findings:
             if name in f.get("resource", "") and "no encryption" in f.get("title", "").lower():
@@ -1904,7 +1919,7 @@ def _analyze_cost(data: dict) -> str:
     if rds_dbs:
         report += "## RDS Databases\n"
         report += f"**Total:** {len(rds_dbs)} databases\n\n"
-        multi_az = [db for db in rds_dbs if db.get("multi_az")]
+        multi_az = [db for db in rds_dbs if db.get("multiAZ")]
         if multi_az:
             report += f"- {len(multi_az)} Multi-AZ deployments (2x cost)\n"
             report += "  **Recommendation:** Use Multi-AZ only for production. Dev/test can use single-AZ.\n"
@@ -1980,7 +1995,7 @@ def _analyze_architecture(data: dict) -> str:
 
     # 2. Database Redundancy
     if rds_dbs:
-        single_az_rds = [db for db in rds_dbs if not db.get("multi_az")]
+        single_az_rds = [db for db in rds_dbs if not db.get("multiAZ")]
         if single_az_rds:
             report += "## Database Redundancy\n"
             report += f"**Risk: MEDIUM** | {len(single_az_rds)} RDS instances without Multi-AZ\n\n"
@@ -2353,7 +2368,7 @@ async def chat(request: dict = {}):
             else:
                 response = f"Found **{len(users)} IAM users**:\n\n"
                 for u in users[:10]:
-                    mfa = "🔒" if u.get("mfa_enabled") else "⚠️"
+                    mfa = "🔒" if u.get("mfaEnabled") else "⚠️"
                     response += f"{mfa} **{u['name']}** - Created: {u.get('created', 'N/A')}\n"
 
         # VPC Commands
@@ -2367,7 +2382,7 @@ async def chat(request: dict = {}):
                 response = f"Found **{len(vpcs)} VPCs**:\n\n"
                 for v in vpcs[:10]:
                     response += f"🌐 **{v.get('name', v['id'])}** - CIDR: {v.get('cidr', 'N/A')}\n"
-                    response += f"  Subnets: {v.get('subnet_count', 0)} | State: {v.get('state', 'N/A')}\n"
+                    response += f"  Subnets: {len(v.get('subnets', []))} | State: {v.get('state', 'N/A')}\n"
 
         # Cost Commands (basic - short commands only)
         elif msg in ["cost", "show cost", "billing", "how much", "expenses", "cost overview"]:
@@ -2416,7 +2431,7 @@ async def chat(request: dict = {}):
             else:
                 response = f"Found **{len(clusters)} ECS clusters**:\n\n"
                 for c in clusters[:10]:
-                    response += f"🐳 **{c['name']}** - Services: {c.get('services', 0)} | Running: {c.get('running_tasks', 0)}\n"
+                    response += f"🐳 **{c['name']}**\n"
 
         # SQS Commands
         elif any(w in msg for w in ["list sqs", "show sqs", "sqs queues", "queues"]):
@@ -2428,7 +2443,7 @@ async def chat(request: dict = {}):
             else:
                 response = f"Found **{len(queues)} SQS queues**:\n\n"
                 for q in queues[:10]:
-                    response += f"📨 **{q['name']}** - Messages: {q.get('messages_available', 0)} available\n"
+                    response += f"📨 **{q['name']}** - Messages: {q.get('messagesAvailable', 0)} available\n"
 
         # SNS Commands
         elif any(w in msg for w in ["list sns", "show sns", "sns topics", "topics", "notifications"]):
@@ -2440,7 +2455,7 @@ async def chat(request: dict = {}):
             else:
                 response = f"Found **{len(topics)} SNS topics**:\n\n"
                 for t in topics[:10]:
-                    response += f"📢 **{t['name']}** - Subscriptions: {t.get('subscriptions_count', 0)}\n"
+                    response += f"📢 **{t['name']}**\n"
 
         # Secrets Manager
         elif any(w in msg for w in ["list secrets", "show secrets", "secrets manager"]):
@@ -2610,12 +2625,13 @@ async def chat(request: dict = {}):
 
     except HTTPException as e:
         response = f"Connection error: {e.detail}\n\nPlease make sure you're connected to AWS. Go to the AWS Dashboard and connect first."
-    except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        error_msg = e.response["Error"]["Message"]
-        response = f"AWS Error ({error_code}): {error_msg}"
     except Exception as e:
-        response = f"Error: {str(e)}\n\nPlease try again or check your connection."
+        if hasattr(e, 'response') and hasattr(e.response, 'get'):
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            error_msg = e.response.get("Error", {}).get("Message", str(e))
+            response = f"AWS Error ({error_code}): {error_msg}"
+        else:
+            response = f"Error: {str(e)}\n\nPlease try again or check your connection."
 
     return {"response": response, "tools_used": tools_used}
 
