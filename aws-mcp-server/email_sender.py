@@ -114,11 +114,17 @@ def _send_email_alert(
 
     try:
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context) as server:
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context, timeout=15) as server:
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, recipient_email, msg.as_string())
         logger.info(f"Email alert sent: {alert_label} ${current_cost:.2f} > ${threshold:.2f}")
         return True
+    except smtplib.SMTPConnectError as e:
+        logger.error(f"SMTP connection failed — wrong host/port: {e}")
+        return False
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP auth failed — wrong email/password: {e}")
+        return False
     except Exception as e:
         logger.error(f"Email send failed: {e}")
         return False
@@ -180,11 +186,20 @@ def send_test_email(config: dict) -> bool:
 
     try:
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context) as server:
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context, timeout=15) as server:
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, recipient_email, msg.as_string())
         logger.info("Test email sent successfully")
         return True
+    except smtplib.SMTPConnectError as e:
+        logger.error(f"SMTP connection failed — wrong host/port: {e}")
+        return False
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP auth failed — wrong email/password: {e}")
+        return False
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error: {e}")
+        return False
     except Exception as e:
         logger.error(f"Test email failed: {e}")
         return False

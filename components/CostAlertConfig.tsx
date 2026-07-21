@@ -97,7 +97,7 @@ export default function CostAlertConfig({ credentials, onConfigSaved }: CostAler
       if (data.success) {
         setMessage("✅ Test email sent! Check your inbox.");
       } else {
-        setMessage("❌ Failed to send test email");
+        setMessage(`❌ ${data.detail || data.error || "Failed to send test email"}`);
       }
     } catch (err) {
       setMessage("❌ Error sending test email");

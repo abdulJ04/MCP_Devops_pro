@@ -149,12 +149,14 @@ async def test_alert_email(request: dict = {}):
     """Send a test email to verify SMTP configuration."""
     config = get_config()
     config_dict = {
-        "smtp_host": config.smtp_host,
-        "smtp_port": config.smtp_port,
-        "smtp_user": config.smtp_user,
-        "smtp_password": config.smtp_password,
-        "email": config.email,
+        "smtp_host": request.get("smtp_host") or config.smtp_host or "",
+        "smtp_port": request.get("smtp_port") or config.smtp_port or 465,
+        "smtp_user": request.get("smtp_user") or config.smtp_user or "",
+        "smtp_password": request.get("smtp_password") or config.smtp_password or "",
+        "email": request.get("email") or config.email or "",
     }
+    if not all([config_dict["smtp_host"], config_dict["smtp_user"], config_dict["smtp_password"], config_dict["email"]]):
+        raise HTTPException(status_code=400, detail="Fill all SMTP fields: Host, Port, Email, Password")
     success = send_test_email(config_dict)
     if success:
         return {"success": True, "message": "Test email sent successfully"}
