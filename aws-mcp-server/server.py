@@ -384,25 +384,18 @@ async def ec2_instances(request: dict = {}):
             }
             try:
                 now = datetime.now(timezone.utc)
-                metrics_to_fetch = [
-                    ("CPUUtilization", "cpu_avg", "Average"),
-                    ("NetworkIn", "network_in_bytes", "Sum"),
-                    ("NetworkOut", "network_out_bytes", "Sum"),
-                    ("DiskReadBytes", "disk_read_bytes", "Sum"),
-                ]
-                for metric_name, key, stat in metrics_to_fetch:
-                    try:
-                        data = cw.get_metric_statistics(
-                            Namespace="AWS/EC2", MetricName=metric_name,
-                            Dimensions=[{"Name": "InstanceId", "Value": instance_id}],
-                            StartTime=now - timedelta(hours=1), EndTime=now,
-                            Period=300, Statistics=[stat],
-                        )
-                        dp = data.get("Datapoints", [])
-                        if dp:
-                            item["metrics"][key] = round(dp[-1].get(stat, 0), 2)
-                    except Exception:
-                        pass
+                try:
+                    data = cw.get_metric_statistics(
+                        Namespace="AWS/EC2", MetricName="CPUUtilization",
+                        Dimensions=[{"Name": "InstanceId", "Value": instance_id}],
+                        StartTime=now - timedelta(hours=1), EndTime=now,
+                        Period=300, Statistics=["Average"],
+                    )
+                    dp = data.get("Datapoints", [])
+                    if dp:
+                        item["metrics"]["cpu_avg"] = round(dp[-1].get("Average", 0), 2)
+                except Exception:
+                    pass
             except Exception as e:
                 item["metrics"]["error"] = str(e)
             return item
@@ -534,24 +527,6 @@ async def lambda_functions(request: dict = {}):
                 )
                 dp = inv.get("Datapoints", [])
                 item["invocations"] = round(sum(d["Sum"] for d in dp))
-
-                errs = cw.get_metric_statistics(
-                    Namespace="AWS/Lambda", MetricName="Errors",
-                    Dimensions=[{"Name": "FunctionName", "Value": name}],
-                    StartTime=now - timedelta(hours=24), EndTime=now,
-                    Period=3600, Statistics=["Sum"],
-                )
-                dp = errs.get("Datapoints", [])
-                item["errors"] = round(sum(d["Sum"] for d in dp))
-
-                dur = cw.get_metric_statistics(
-                    Namespace="AWS/Lambda", MetricName="Duration",
-                    Dimensions=[{"Name": "FunctionName", "Value": name}],
-                    StartTime=now - timedelta(hours=24), EndTime=now,
-                    Period=3600, Statistics=["Average"],
-                )
-                dp = dur.get("Datapoints", [])
-                item["avgDuration"] = round(dp[-1]["Average"], 2) if dp else 0
             except Exception:
                 pass
             return item
