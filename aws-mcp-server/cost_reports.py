@@ -76,6 +76,8 @@ def generate_report_data(report_type: str = "daily") -> dict:
         "forecast": cost_data.get("forecast", 0),
         "top_services": top_services,
         "region_breakdown": region_breakdown,
+        "daily": cost_data.get("daily", []),
+        "daily_last_month": cost_data.get("daily_last_month", []),
         "anomaly_score": anomaly_score,
         "anomaly_details": anomaly_details,
         "source": cost_data.get("source", "real"),
@@ -93,7 +95,9 @@ def _fetch_real_cost_data() -> dict:
         ce = _get_client("ce")
         now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        month_start = today_start.replace(day=1)
 
+        # Today's cost
         r = ce.get_cost_and_usage(
             TimePeriod={"Start": today_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
             Granularity="DAILY",
@@ -102,7 +106,7 @@ def _fetch_real_cost_data() -> dict:
         vals = r.get("ResultsByTime", [])
         today_cost = float(vals[0]["Total"]["UnblendedCost"]["Amount"]) if vals else 0
 
-        month_start = today_start.replace(day=1)
+        # Current month total
         r_month = ce.get_cost_and_usage(
             TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
             Granularity="MONTHLY",
@@ -111,6 +115,7 @@ def _fetch_real_cost_data() -> dict:
         month_vals = r_month.get("ResultsByTime", [])
         month_cost = float(month_vals[0]["Total"]["UnblendedCost"]["Amount"]) if month_vals else 0
 
+        # Service breakdown
         r_svc = ce.get_cost_and_usage(
             TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
             Granularity="MONTHLY",
@@ -125,24 +130,48 @@ def _fetch_real_cost_data() -> dict:
                 if cost > 0:
                     by_service.append({"service": svc_name, "cost": cost})
 
+        # Current month daily costs
         daily = []
-        for i in range(30):
-            date = (now - timedelta(days=29 - i)).strftime("%Y-%m-%d")
-            daily.append({"date": date, "cost": round(month_cost / 30, 2)})
+        r_daily = ce.get_cost_and_usage(
+            TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
+            Granularity="DAILY",
+            Metrics=["UnblendedCost"],
+        )
+        for result in r_daily.get("ResultsByTime", []):
+            date = result["TimePeriod"]["Start"]
+            cost = round(float(result["Total"]["UnblendedCost"]["Amount"]), 2)
+            daily.append({"date": date, "cost": cost})
+
+        # Last month daily costs
+        last_month_start = (month_start - timedelta(days=1)).replace(day=1)
+        daily_last_month = []
+        r_daily_last = ce.get_cost_and_usage(
+            TimePeriod={"Start": last_month_start.strftime("%Y-%m-%d"), "End": month_start.strftime("%Y-%m-%d")},
+            Granularity="DAILY",
+            Metrics=["UnblendedCost"],
+        )
+        for result in r_daily_last.get("ResultsByTime", []):
+            date = result["TimePeriod"]["Start"]
+            cost = round(float(result["Total"]["UnblendedCost"]["Amount"]), 2)
+            daily_last_month.append({"date": date, "cost": cost})
+
+        # Yesterday cost from daily data
+        yesterday_cost = daily[-2]["cost"] if len(daily) >= 2 else round(today_cost * 0.9, 2)
 
         return {
             "today": round(today_cost, 2),
-            "yesterday": round(today_cost * 0.9, 2),
+            "yesterday": round(yesterday_cost, 2),
             "month": round(month_cost, 2),
             "forecast": round(month_cost * 1.1, 2),
             "daily": daily,
+            "daily_last_month": daily_last_month,
             "byService": by_service,
             "byRegion": [],
             "source": "real",
         }
     except Exception as e:
         logger.error(f"Real cost fetch failed: {e}")
-        return {"today": 0, "yesterday": 0, "month": 0, "forecast": 0, "daily": [], "byService": [], "byRegion": [], "source": "error"}
+        return {"today": 0, "yesterday": 0, "month": 0, "forecast": 0, "daily": [], "daily_last_month": [], "byService": [], "byRegion": [], "source": "error"}
 
 
 def _get_period_range(report_type: str, now: datetime) -> tuple:
@@ -422,7 +451,30 @@ async def generate_report(request: dict = {}):
     report_config = get_report_config()
     if report_config.google_sheets_enabled and report_config.apps_script_url:
         try:
-            from google_sheets import push_region_cost_data, push_service_cost_data
+            from google_sheets import push_daily_cost_tracker, push_region_cost_data, push_service_cost_data
+
+            daily = report_data.get("daily", [])
+            daily_last = report_data.get("daily_last_month", [])
+            last_month_by_day = {}
+            for entry in daily_last:
+                try:
+                    day = int(entry["date"].split("-")[2])
+                    last_month_by_day[day] = entry["cost"]
+                except (IndexError, ValueError):
+                    pass
+
+            cum_cur = 0.0
+            cum_last = 0.0
+            tracker_rows = []
+            for entry in daily:
+                parts = entry["date"].split("-")
+                display_date = f"{int(parts[1])}/{int(parts[2])}/{parts[0]}"
+                cum_cur += entry["cost"]
+                day_num = int(parts[2])
+                cum_last += last_month_by_day.get(day_num, 0)
+                tracker_rows.append([display_date, round(entry["cost"], 2), round(cum_cur, 2), round(cum_last, 2)])
+
+            push_daily_cost_tracker(report_config.apps_script_url, tracker_rows)
             push_region_cost_data(report_config.apps_script_url, report_data)
             push_service_cost_data(report_config.apps_script_url, report_data)
             gs_uploaded = True
@@ -515,15 +567,57 @@ async def push_to_google_sheets(request: dict = {}):
 
     report_data = generate_report_data(report_type)
 
-    from google_sheets import push_region_cost_data, push_service_cost_data
+    # Build daily tracker rows:
+    # [DATE, Daily Cost, Total Cost Cur mon, Total Cost Last mon]
+    daily = report_data.get("daily", [])
+    daily_last = report_data.get("daily_last_month", [])
 
+    # Build lookup for last month costs by day-of-month
+    last_month_by_day = {}
+    for entry in daily_last:
+        try:
+            day = int(entry["date"].split("-")[2])
+            last_month_by_day[day] = entry["cost"]
+        except (IndexError, ValueError):
+            pass
+
+    # Build cumulative rows
+    cum_cur = 0.0
+    cum_last = 0.0
+    tracker_rows = []
+    for entry in daily:
+        date_str = entry["date"]  # "2026-01-01"
+        day_cost = entry["cost"]
+
+        # Parse to M/D/YYYY
+        parts = date_str.split("-")
+        display_date = f"{int(parts[1])}/{int(parts[2])}/{parts[0]}"
+
+        cum_cur += day_cost
+
+        # Last month same day number
+        day_num = int(parts[2])
+        last_cost = last_month_by_day.get(day_num, 0)
+        cum_last += last_cost
+
+        tracker_rows.append([
+            display_date,
+            round(day_cost, 2),
+            round(cum_cur, 2),
+            round(cum_last, 2),
+        ])
+
+    from google_sheets import push_daily_cost_tracker, push_region_cost_data, push_service_cost_data
+
+    tracker_ok = push_daily_cost_tracker(apps_script_url, tracker_rows)
     region_ok = push_region_cost_data(apps_script_url, report_data)
     service_ok = push_service_cost_data(apps_script_url, report_data)
 
-    if region_ok or service_ok:
+    if tracker_ok or region_ok or service_ok:
         return {
             "success": True,
-            "message": f"Region: {'OK' if region_ok else 'FAILED'}, Service: {'OK' if service_ok else 'FAILED'}",
+            "message": f"Tracker: {'OK' if tracker_ok else 'FAILED'}, Region: {'OK' if region_ok else 'FAILED'}, Service: {'OK' if service_ok else 'FAILED'}",
+            "rows_pushed": len(tracker_rows),
             "report": report_data,
         }
     raise HTTPException(status_code=400, detail="Push failed — check Apps Script URL and Sheet sharing settings")

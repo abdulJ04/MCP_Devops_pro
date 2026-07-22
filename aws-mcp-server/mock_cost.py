@@ -45,6 +45,19 @@ def get_mock_cost_data() -> dict:
             day_cost = 85.23
         daily.append({"date": date, "cost": day_cost})
 
+    # Generate last month daily costs (same structure, offset by 1 month)
+    last_month = now.month - 1 if now.month > 1 else 12
+    last_month_year = now.year if now.month > 1 else now.year - 1
+    import calendar
+    days_in_last_month = calendar.monthrange(last_month_year, last_month)[1]
+    daily_last_month = []
+    for d in range(1, days_in_last_month + 1):
+        date_str = f"{last_month_year}-{last_month:02d}-{d:02d}"
+        day_cost = round(base_cost + random.uniform(-8, 18), 2)
+        if d == 20:
+            day_cost = 85.23
+        daily_last_month.append({"date": date_str, "cost": day_cost})
+
     # Service breakdown (realistic AWS service names)
     services = [
         ("Amazon Elastic Compute Cloud - Compute", 0.35),
@@ -80,6 +93,7 @@ def get_mock_cost_data() -> dict:
         "month": month_cost,
         "forecast": forecast,
         "daily": daily,
+        "daily_last_month": daily_last_month,
         "byService": by_service,
         "byRegion": by_region,
         "source": "mock",

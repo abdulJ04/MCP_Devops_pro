@@ -80,6 +80,36 @@ def _post_to_apps_script(apps_script_url: str, payload: dict) -> dict:
     raise Exception(f"No JSON in response: {response_body[:200]}")
 
 
+def push_daily_cost_tracker(apps_script_url: str, daily_rows: list) -> bool:
+    """Push daily cost tracker to Google Sheet.
+
+    Format:
+        DATE | Daily Cost | Total Cost Cur mon | Total Cost Last mon
+        1/1/2026 | 99.89 | 99.89 | 116.5
+        1/2/2026 | 7.7 | 107.59 | 142.49
+
+    Args:
+        apps_script_url: Google Apps Script Web App URL
+        daily_rows: list of [date_str, daily_cost, cum_cur_mon, cum_last_mon]
+    """
+    if not apps_script_url or not daily_rows:
+        return False
+
+    try:
+        result = _post_to_apps_script(apps_script_url, {
+            "action": "push_daily_tracker",
+            "rows": daily_rows,
+        })
+        if result.get("success"):
+            logger.info(f"Pushed {len(daily_rows)} daily tracker rows to Google Sheet")
+            return True
+        logger.error(f"Apps Script error: {result}")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to push daily tracker: {e}")
+        return False
+
+
 def push_region_cost_data(apps_script_url: str, report_data: dict) -> bool:
     """Push region-based cost data to Google Sheet."""
     if not apps_script_url:
