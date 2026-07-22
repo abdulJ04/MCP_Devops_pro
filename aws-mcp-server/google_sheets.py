@@ -80,7 +80,7 @@ def _post_to_apps_script(apps_script_url: str, payload: dict) -> dict:
     raise Exception(f"No JSON in response: {response_body[:200]}")
 
 
-def push_daily_cost_tracker(apps_script_url: str, daily_rows: list) -> bool:
+def push_daily_cost_tracker(apps_script_url: str, daily_rows: list, filtered: bool = False) -> bool:
     """Push daily cost tracker to Google Sheet.
 
     Format:
@@ -91,6 +91,7 @@ def push_daily_cost_tracker(apps_script_url: str, daily_rows: list) -> bool:
     Args:
         apps_script_url: Google Apps Script Web App URL
         daily_rows: list of [date_str, daily_cost, cum_cur_mon, cum_last_mon]
+        filtered: if True, clear sheet before inserting (for date range filter)
     """
     if not apps_script_url or not daily_rows:
         return False
@@ -99,6 +100,7 @@ def push_daily_cost_tracker(apps_script_url: str, daily_rows: list) -> bool:
         result = _post_to_apps_script(apps_script_url, {
             "action": "push_daily_tracker",
             "rows": daily_rows,
+            "filtered": filtered,
         })
         if result.get("success"):
             logger.info(f"Pushed {len(daily_rows)} daily tracker rows to Google Sheet")

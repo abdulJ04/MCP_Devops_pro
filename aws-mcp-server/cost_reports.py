@@ -4,9 +4,12 @@ import json
 import smtplib
 import ssl
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from fastapi import APIRouter, HTTPException
+
+IST = ZoneInfo("Asia/Kolkata")
 from models import (
     get_report_config, update_report_config,
     get_report_history, add_report_history,
@@ -556,9 +559,16 @@ async def test_google_sheets(request: dict = {}):
 
 @router.post("/cost/report/google-sheets/push")
 async def push_to_google_sheets(request: dict = {}):
-    """Push report data to Google Sheet via Apps Script URL."""
+    """Push report data to Google Sheet via Apps Script URL.
+
+    Optional params:
+        from_date: "YYYY-MM-DD" — start date filter
+        to_date: "YYYY-MM-DD" — end date filter (inclusive)
+    """
     apps_script_url = request.get("apps_script_url", "")
     report_type = request.get("report_type", "daily")
+    from_date = request.get("from_date", "")
+    to_date = request.get("to_date", "")
 
     if not apps_script_url:
         raise HTTPException(status_code=400, detail="apps_script_url is required")
@@ -579,40 +589,58 @@ async def push_to_google_sheets(request: dict = {}):
         except (IndexError, ValueError):
             pass
 
-    # Build cumulative rows
+    # Filter by date range if provided
+    filtered_daily = daily
+    if from_date:
+        filtered_daily = [d for d in filtered_daily if d["date"] >= from_date]
+    if to_date:
+        filtered_daily = [d for d in filtered_daily if d["date"] <= to_date]
+
+    # For cumulative calc, we need ALL days up to from_date to compute starting cum_cur
+    # So compute cumulative from full daily list, then filter output
     cum_cur = 0.0
     cum_last = 0.0
-    tracker_rows = []
+    all_tracker_rows = []
     for entry in daily:
-        date_str = entry["date"]  # "2026-01-01"
+        date_str = entry["date"]
         day_cost = entry["cost"]
-
-        # Parse to M/D/YYYY
         parts = date_str.split("-")
         display_date = f"{int(parts[1])}/{int(parts[2])}/{parts[0]}"
-
         cum_cur += day_cost
-
-        # Last month same day number
         day_num = int(parts[2])
-        last_cost = last_month_by_day.get(day_num, 0)
-        cum_last += last_cost
-
-        tracker_rows.append([
+        cum_last += last_month_by_day.get(day_num, 0)
+        all_tracker_rows.append([
             display_date,
             round(day_cost, 2),
             round(cum_cur, 2),
             round(cum_last, 2),
         ])
 
+    # Apply date filter on output
+    if from_date or to_date:
+        tracker_rows = []
+        for row in all_tracker_rows:
+            # row[0] is M/D/YYYY, convert to YYYY-MM-DD for comparison
+            parts = row[0].split("/")
+            row_date = f"{parts[2]}-{int(parts[0]):02d}-{int(parts[1]):02d}"
+            if from_date and row_date < from_date:
+                continue
+            if to_date and row_date > to_date:
+                continue
+            tracker_rows.append(row)
+    else:
+        tracker_rows = all_tracker_rows
+
     from google_sheets import push_daily_cost_tracker
 
-    tracker_ok = push_daily_cost_tracker(apps_script_url, tracker_rows)
+    is_filtered = bool(from_date or to_date)
+    tracker_ok = push_daily_cost_tracker(apps_script_url, tracker_rows, filtered=is_filtered)
 
     if tracker_ok:
+        mode = "Filtered" if is_filtered else "Full"
         return {
             "success": True,
-            "message": f"Tracker pushed: {len(tracker_rows)} rows",
+            "message": f"{mode} push: {len(tracker_rows)} rows",
             "rows_pushed": len(tracker_rows),
             "report": report_data,
         }
