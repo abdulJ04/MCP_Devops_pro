@@ -451,7 +451,7 @@ async def generate_report(request: dict = {}):
     report_config = get_report_config()
     if report_config.google_sheets_enabled and report_config.apps_script_url:
         try:
-            from google_sheets import push_daily_cost_tracker, push_region_cost_data, push_service_cost_data
+            from google_sheets import push_daily_cost_tracker
 
             daily = report_data.get("daily", [])
             daily_last = report_data.get("daily_last_month", [])
@@ -475,8 +475,6 @@ async def generate_report(request: dict = {}):
                 tracker_rows.append([display_date, round(entry["cost"], 2), round(cum_cur, 2), round(cum_last, 2)])
 
             push_daily_cost_tracker(report_config.apps_script_url, tracker_rows)
-            push_region_cost_data(report_config.apps_script_url, report_data)
-            push_service_cost_data(report_config.apps_script_url, report_data)
             gs_uploaded = True
         except Exception as e:
             logger.warning(f"Google Sheets push failed: {e}")
@@ -607,16 +605,14 @@ async def push_to_google_sheets(request: dict = {}):
             round(cum_last, 2),
         ])
 
-    from google_sheets import push_daily_cost_tracker, push_region_cost_data, push_service_cost_data
+    from google_sheets import push_daily_cost_tracker
 
     tracker_ok = push_daily_cost_tracker(apps_script_url, tracker_rows)
-    region_ok = push_region_cost_data(apps_script_url, report_data)
-    service_ok = push_service_cost_data(apps_script_url, report_data)
 
-    if tracker_ok or region_ok or service_ok:
+    if tracker_ok:
         return {
             "success": True,
-            "message": f"Tracker: {'OK' if tracker_ok else 'FAILED'}, Region: {'OK' if region_ok else 'FAILED'}, Service: {'OK' if service_ok else 'FAILED'}",
+            "message": f"Tracker pushed: {len(tracker_rows)} rows",
             "rows_pushed": len(tracker_rows),
             "report": report_data,
         }
