@@ -250,7 +250,7 @@ function generateCostData() {
     { name: "us-east-1", value: 1850 },{ name: "us-west-2", value: 920 },{ name: "eu-west-1", value: 650 },
     { name: "ap-southeast-1", value: 380 },{ name: "Other", value: 210 },
   ];
-  return { daily, byService, byRegion };
+  return { daily, byService, byRegion, forecast: 0, today: 0, month: 0 };
 }
 
 function generateSecurityFindings(): SecurityFinding[] {
@@ -1259,9 +1259,9 @@ function VPCTab({ vpcs, securityGroups }: { vpcs: VPC[]; securityGroups: Securit
 }
 
 function CostTab({ costData }: { costData: ReturnType<typeof generateCostData> }) {
-  const todayCost = costData.daily[costData.daily.length - 1]?.cost || 0;
-  const monthCost = costData.byService.reduce((s, c) => s + c.cost, 0);
-  const forecast = Math.round(monthCost * 1.08 * 100) / 100;
+  const todayCost = costData.today || costData.daily[costData.daily.length - 1]?.cost || 0;
+  const monthCost = costData.month || costData.byService.reduce((s, c) => s + c.cost, 0);
+  const forecast = costData.forecast || Math.round(monthCost * 1.08 * 100) / 100;
 
   return (
     <div className="space-y-6">
@@ -1687,7 +1687,7 @@ export default function AWSDashboardPage() {
   const [iamPolicies, setIamPolicies] = useState<IAMPolicy[]>([]);
   const [vpcData, setVpcData] = useState<VPC[]>([]);
   const [securityGroups, setSecurityGroups] = useState<SecurityGroup[]>([]);
-  const [costDataState, setCostDataState] = useState<ReturnType<typeof generateCostData>>({ daily: [], byService: [], byRegion: [] });
+  const [costDataState, setCostDataState] = useState<ReturnType<typeof generateCostData>>({ daily: [], byService: [], byRegion: [], forecast: 0, today: 0, month: 0 });
   const [findings, setFindings] = useState<SecurityFinding[]>([]);
   const [trailEvents, setTrailEvents] = useState<TrailEvent[]>([]);
   const [ebsData, setEbsData] = useState<any[]>([]);
@@ -1856,7 +1856,7 @@ export default function AWSDashboardPage() {
         }));
         setSecurityGroups(mapped);
       }
-      if (costRes) setCostDataState({ daily: costRes.daily || [], byService: costRes.byService || costRes.by_service || [], byRegion: costRes.byRegion || costRes.by_region || [] });
+      if (costRes) setCostDataState({ daily: costRes.daily || [], byService: costRes.byService || costRes.by_service || [], byRegion: costRes.byRegion || costRes.by_region || [], forecast: costRes.forecast || 0, today: costRes.today || 0, month: costRes.month || 0 });
       if (securityRes?.findings) setFindings(securityRes.findings);
       if (activityRes?.events) setTrailEvents(activityRes.events);
       if (ebsRes?.volumes) setEbsData(ebsRes.volumes);

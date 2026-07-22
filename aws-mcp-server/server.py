@@ -76,6 +76,7 @@ _credentials: Dict[str, Any] = {
     "use_localstack": True,
 }
 _sessions: Dict[str, Any] = {}
+_clients: Dict[str, Any] = {}
 _cache: Dict[str, Dict[str, Any]] = {}
 METRICS_TTL = 30
 INVENTORY_TTL = 300
@@ -104,13 +105,18 @@ def _get_session() -> boto3.Session:
 
 def _get_client(service: str):
     with _creds_lock:
+        cache_key = f"{service}:{_credentials.get('aws_region', 'us-east-1')}:{_credentials.get('use_localstack', False)}"
+        if cache_key in _clients:
+            return _clients[cache_key]
         kwargs = {"region_name": _credentials.get("aws_region", "us-east-1")}
         if _credentials.get("use_localstack"):
             kwargs["endpoint_url"] = _credentials.get("endpoint_url", "http://localhost:4566")
-            kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=10)
+            kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=10, max_pool_connections=50)
         else:
-            kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 2})
-    return _get_session().client(service, **kwargs)
+            kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 2}, max_pool_connections=50)
+        client = _get_session().client(service, **kwargs)
+        _clients[cache_key] = client
+        return client
 
 
 def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aws_region=None, use_localstack=None):
@@ -122,6 +128,7 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
             logger.warning("Session expired, clearing credentials")
             _credentials.clear()
             _sessions.clear()
+            _clients.clear()
             _cache.clear()
             _session_created_at = 0
             raise HTTPException(status_code=401, detail="Session expired. Please reconnect.")
@@ -138,6 +145,7 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
                     "use_localstack": True,
                 }
                 _sessions.clear()
+                _clients.clear()
             return
 
         # If explicitly told NOT to use LocalStack (use_localstack is False or None with live keys)
@@ -146,6 +154,7 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
             if _credentials.get("use_localstack"):
                 logger.info("Switching from LocalStack to live AWS")
                 _sessions.clear()
+                _clients.clear()
                 _cache.clear()
 
             if access_key and secret_key:
@@ -162,6 +171,7 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
                         "use_localstack": False,
                     }
                     _sessions.clear()
+                    _clients.clear()
                     _session_created_at = time.time()
             return
 
@@ -200,6 +210,7 @@ async def disconnect():
             "use_localstack": True,
         }
         _sessions.clear()
+        _clients.clear()
         _cache.clear()
         _session_created_at = 0
     logger.info("Dashboard disconnected — credentials reset to LocalStack defaults")
@@ -277,6 +288,7 @@ async def auth(req: AuthRequest):
                     "endpoint_url": req.endpoint_url or "http://localhost:4566",
                 }
                 _sessions.clear()
+                _clients.clear()
                 _session_created_at = time.time()
                 logger.info(f"LocalStack auth success: Account={identity.get('Account')}")
                 return {"success": True, "status": "success", "account": identity.get("Account"), "arn": identity.get("Arn"), "message": "Connected to LocalStack"}
@@ -310,6 +322,7 @@ async def auth(req: AuthRequest):
                 "use_localstack": False,
             }
             _sessions.clear()
+            _clients.clear()
             _session_created_at = time.time()
             return {"success": True, "status": "success", "account": identity.get("Account"), "arn": identity.get("Arn"), "message": f"Connected to AWS account {identity.get('Account')}"}
         except Exception as e:
@@ -439,40 +452,28 @@ async def s3_buckets(request: dict = {}):
                 "versioning": False,
                 "encryption": False,
                 "publicAccess": False,
+                "creation_date": bucket.get("CreationDate", "").isoformat() if bucket.get("CreationDate") else "",
             }
 
             try:
                 ver = s3.get_bucket_versioning(Bucket=name)
                 item["versioning"] = ver.get("Status") == "Enabled"
-            except ClientError:
+            except Exception:
                 pass
 
             try:
                 enc = s3.get_bucket_encryption(Bucket=name)
                 rules = enc.get("ServerSideEncryptionConfiguration", {}).get("Rules", [])
                 item["encryption"] = bool(rules)
-            except ClientError:
+            except Exception:
                 item["encryption"] = False
 
             try:
                 access = s3.get_public_access_block(Bucket=name)
                 pa = access.get("PublicAccessBlockConfiguration", {})
                 item["publicAccess"] = not (pa.get("BlockPublicAcls", False) and pa.get("BlockPublicPolicy", False))
-            except ClientError:
+            except Exception:
                 item["publicAccess"] = False
-
-            try:
-                paginator = s3.get_paginator("list_objects_v2")
-                count = 0
-                total_size = 0
-                for page in paginator.paginate(Bucket=name):
-                    for obj in page.get("Contents", []):
-                        count += 1
-                        total_size += obj.get("Size", 0)
-                item["objectCount"] = count
-                item["size"] = _format_size(total_size)
-            except ClientError:
-                pass
 
             return item
 
@@ -798,12 +799,21 @@ async def cost_info(request: dict = {}):
                 "service": g["Keys"][0],
                 "cost": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
             })
+        result["byService"].sort(key=lambda x: x["cost"], reverse=True)
 
         for g in by_region_resp.get("ResultsByTime", [{}])[0].get("Groups", []):
             result["byRegion"].append({
                 "name": g["Keys"][0],
                 "value": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
             })
+        result["byRegion"].sort(key=lambda x: x["value"], reverse=True)
+
+        # Forecast: extrapolate month cost
+        day_of_month = now.day
+        if day_of_month > 0 and month_cost > 0:
+            import calendar
+            days_in_month = calendar.monthrange(now.year, now.month)[1]
+            result["forecast"] = round((month_cost / day_of_month) * days_in_month, 2)
 
     except Exception as e:
         result["error"] = str(e)
