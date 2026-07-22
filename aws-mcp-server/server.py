@@ -816,7 +816,16 @@ async def cost_info(request: dict = {}):
             result["forecast"] = round((month_cost / day_of_month) * days_in_month, 2)
 
     except Exception as e:
-        result["error"] = str(e)
+        error_msg = str(e)
+        logger.warning(f"Cost Explorer error: {error_msg}")
+        if "AccessDenied" in error_msg or "Unauthorized" in error_msg:
+            logger.warning("Cost Explorer not authorized — falling back to mock cost data")
+            from mock_cost import get_mock_cost_data
+            result = get_mock_cost_data()
+            result["source"] = "mock"
+            result["cost_note"] = "Cost Explorer not authorized. Showing estimated data. Ask your admin to add ce:GetCostAndUsage permission."
+        else:
+            result["error"] = error_msg
 
     _set_cache("cost", result)
     return result
