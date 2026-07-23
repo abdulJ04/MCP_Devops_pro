@@ -79,11 +79,11 @@ npm install
 pip3 install -r aws-mcp-server/requirements.txt
 ```
 
-> **Why install manually?** The `start.sh` script tries to install dependencies, but sometimes it fails silently or the backend starts before dependencies are ready. Installing manually first ensures everything is in place.
+> **Why install manually?** The `make start` command tries to install dependencies, but sometimes it fails silently or the backend starts before dependencies are ready. Installing manually first ensures everything is in place.
 
 ### Step 3: Start everything
 ```bash
-bash start.sh
+make start
 ```
 
 This starts:
@@ -151,7 +151,7 @@ lsof -ti:8085 | xargs kill -9
 lsof -ti:3000 | xargs kill -9
 
 # Then restart
-bash start.sh
+make start
 ```
 
 ---
@@ -512,7 +512,7 @@ export GROQ_API_KEY="gsk_..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-Set these in `start.sh` or export before running:
+Set these in `.env.development` or export before running:
 ```bash
 export OLLAMA_URL="http://localhost:11434"
 export OLLAMA_MODEL="qwen2.5:1.5b"
@@ -568,7 +568,7 @@ MCP_Devops_pro/
 │   ├── setup-enterprise-demo.sh      # Create demo data
 │   └── cleanup-demo.sh               # Clean demo data
 │
-├── start.sh                          # One-click startup
+├── Makefile                           # One-click startup (make start)
 ├── package.json                      # Node.js dependencies
 ├── next.config.js                    # Next.js config
 └── tailwind.config.js                # Tailwind config
@@ -614,7 +614,7 @@ MCP_Devops_pro/
 
 ```bash
 # Start everything
-bash start.sh
+make start
 
 # Start only frontend
 npm run dev
@@ -691,14 +691,14 @@ lsof -ti:8085 | xargs kill -9
 lsof -ti:3000 | xargs kill -9
 
 # Restart
-bash start.sh
+make start
 ```
 
 ---
 
 ## Environment Variables
 
-Set in `start.sh` or export before running:
+Set in `.env.development` or export before running:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -713,8 +713,8 @@ Set in `start.sh` or export before running:
 ## Quick Reference Card
 
 ```
-START:    bash start.sh
-STOP:     Ctrl+C
+START:    make start
+STOP:     make stop
 OPEN:     http://localhost:3000
 BACKEND:  http://localhost:8085
 HEALTH:   curl http://localhost:8085/health

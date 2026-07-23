@@ -3,12 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:all": "cd aws-mcp-server && python3 server.py & sleep 3 && next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "setup": "pip3 install -r aws-mcp-server/requirements.txt && npm install"
+    "setup": "pip3 install -r aws-mcp-server/requirements.txt -q --break-system-packages && npm install --silent"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

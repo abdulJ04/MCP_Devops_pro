@@ -104,6 +104,19 @@ class ReportHistory(Base):
     source = Column(String(20), default="real")
 
 
+class ServiceAlertConfig(Base):
+    """Per-service alert configuration."""
+    __tablename__ = "service_alert_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    service = Column(String(50), unique=True, nullable=False)
+    enabled = Column(Boolean, default=False)
+    metric = Column(String(50), default="cpu")
+    threshold = Column(Float, default=80.0)
+    operator = Column(String(5), default=">")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def init_db():
     """Create all tables if they don't exist."""
     Base.metadata.create_all(bind=engine)
@@ -244,6 +257,95 @@ def add_report_history(**kwargs):
         db.commit()
         db.refresh(entry)
         return entry
+    finally:
+        db.close()
+
+
+DEFAULT_SERVICE_ALERTS = [
+    {"service": "ec2", "metric": "cpu", "threshold": 80.0, "operator": ">", "enabled": False},
+    {"service": "ec2_memory", "metric": "memory", "threshold": 85.0, "operator": ">", "enabled": False},
+    {"service": "s3_public", "metric": "public_access", "threshold": 0, "operator": "=", "enabled": False},
+    {"service": "lambda_error", "metric": "error_rate", "threshold": 5.0, "operator": ">", "enabled": False},
+    {"service": "dynamodb_throttle", "metric": "throttled_requests", "threshold": 10.0, "operator": ">", "enabled": False},
+    {"service": "rds_cpu", "metric": "cpu", "threshold": 80.0, "operator": ">", "enabled": False},
+    {"service": "iam_change", "metric": "user_creation", "threshold": 0, "operator": "=", "enabled": False},
+    {"service": "sqs_depth", "metric": "queue_depth", "threshold": 1000.0, "operator": ">", "enabled": False},
+    {"service": "sns_failure", "metric": "publish_failures", "threshold": 5.0, "operator": ">", "enabled": False},
+    {"service": "secrets_rotation", "metric": "rotation_failure", "threshold": 0, "operator": "=", "enabled": False},
+    {"service": "ec2_health", "metric": "instance_failure", "threshold": 0, "operator": "=", "enabled": False},
+    {"service": "cost_spike", "metric": "daily_spike", "threshold": 100.0, "operator": ">", "enabled": False},
+]
+
+
+def get_service_alert_configs():
+    """Get all service alert configs, creating defaults if missing."""
+    db = SessionLocal()
+    try:
+        configs = db.query(ServiceAlertConfig).all()
+        existing = {c.service for c in configs}
+        for default in DEFAULT_SERVICE_ALERTS:
+            if default["service"] not in existing:
+                cfg = ServiceAlertConfig(**default)
+                db.add(cfg)
+                configs.append(cfg)
+        db.commit()
+        return [
+            {
+                "id": c.id,
+                "service": c.service,
+                "enabled": c.enabled,
+                "metric": c.metric,
+                "threshold": c.threshold,
+                "operator": c.operator,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+            }
+            for c in configs
+        ]
+    finally:
+        db.close()
+
+
+def update_service_alert_config(service: str, enabled: bool = None, threshold: float = None):
+    """Update a single service alert config."""
+    db = SessionLocal()
+    try:
+        cfg = db.query(ServiceAlertConfig).filter(ServiceAlertConfig.service == service).first()
+        if not cfg:
+            return None
+        if enabled is not None:
+            cfg.enabled = enabled
+        if threshold is not None:
+            cfg.threshold = threshold
+        cfg.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(cfg)
+        return {
+            "id": cfg.id,
+            "service": cfg.service,
+            "enabled": cfg.enabled,
+            "metric": cfg.metric,
+            "threshold": cfg.threshold,
+            "operator": cfg.operator,
+            "updated_at": cfg.updated_at.isoformat() if cfg.updated_at else None,
+        }
+    finally:
+        db.close()
+
+
+def get_enabled_service_alerts():
+    """Get all enabled service alert configs for sim engine."""
+    db = SessionLocal()
+    try:
+        configs = db.query(ServiceAlertConfig).filter(ServiceAlertConfig.enabled == True).all()
+        return [
+            {
+                "service": c.service,
+                "metric": c.metric,
+                "threshold": c.threshold,
+                "operator": c.operator,
+            }
+            for c in configs
+        ]
     finally:
         db.close()
 

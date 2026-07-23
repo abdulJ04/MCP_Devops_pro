@@ -1,0 +1,11 @@
+{
+  "enabled_alerts": [
+    {
+      "service": "iam_change",
+      "metric": "user_creation",
+      "threshold": 0.0,
+      "operator": "="
+    }
+  ],
+  "updated_at": "2026-07-23T12:32:17.098242+00:00"
+}

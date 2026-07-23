@@ -22,6 +22,7 @@ logger = logging.getLogger("aws-mcp-server")
 from models import init_db
 from cost_alerts import router as cost_alerts_router
 from cost_reports import router as cost_reports_router
+from service_alerts import router as service_alerts_router
 from scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="AWS MCP Server", version="2.0.0")
@@ -43,19 +44,23 @@ async def global_exception_handler(request, exc):
     if isinstance(exc, HTTPException):
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
     logger.error(f"Unhandled error on {request.url.path}: {exc}")
+    status = 500 if not isinstance(exc, HTTPException) else exc.status_code
     return JSONResponse(
-        status_code=200,
-        content={"error": str(exc)},
+        status_code=status,
+        content={"error": str(exc), "detail": str(exc)},
     )
 
 # Register cost alert routes
 app.include_router(cost_alerts_router)
 app.include_router(cost_reports_router)
+app.include_router(service_alerts_router)
 
 
 @app.on_event("startup")
 async def startup_event():
     init_db()
+    from service_alerts import _sync_active_configs_file
+    _sync_active_configs_file()
     start_scheduler()
     logger.info("Cost alert system initialized (SQLite DB + APScheduler)")
 
@@ -78,8 +83,8 @@ _credentials: Dict[str, Any] = {
 _sessions: Dict[str, Any] = {}
 _clients: Dict[str, Any] = {}
 _cache: Dict[str, Dict[str, Any]] = {}
-METRICS_TTL = 30
-INVENTORY_TTL = 300
+METRICS_TTL = 10
+INVENTORY_TTL = 30
 SESSION_TIMEOUT = 3600  # 1 hour default, configurable
 _session_created_at: float = 0
 
@@ -104,11 +109,22 @@ def _get_session() -> boto3.Session:
 
 
 def _get_client(service: str):
+    global _session_created_at
     with _creds_lock:
-        cache_key = f"{service}:{_credentials.get('aws_region', 'us-east-1')}:{_credentials.get('use_localstack', False)}"
+        region = "us-east-1" if service in ("ce", "budgets") else _credentials.get("aws_region", "us-east-1")
+        cache_key = f"{service}:{region}:{_credentials.get('use_localstack', False)}"
+
+        # Check session expiry proactively
+        if _session_created_at > 0 and time.time() - _session_created_at > SESSION_TIMEOUT:
+            logger.warning("Session expired, clearing cached clients")
+            _sessions.pop("default", None)
+            _clients.clear()
+            _cache.clear()
+            _session_created_at = time.time()
+
         if cache_key in _clients:
             return _clients[cache_key]
-        kwargs = {"region_name": _credentials.get("aws_region", "us-east-1")}
+        kwargs = {"region_name": region}
         if _credentials.get("use_localstack"):
             kwargs["endpoint_url"] = _credentials.get("endpoint_url", "http://localhost:4566")
             kwargs["config"] = boto3.session.Config(connect_timeout=5, read_timeout=10, max_pool_connections=50)
@@ -146,6 +162,7 @@ def _ensure_credentials(access_key=None, secret_key=None, session_token=None, aw
                 }
                 _sessions.clear()
                 _clients.clear()
+                _cache.clear()
             return
 
         # If explicitly told NOT to use LocalStack (use_localstack is False or None with live keys)
@@ -189,7 +206,8 @@ async def refresh_cache():
 
 
 @app.post("/set_timeout")
-async def set_timeout(request: dict = {}):
+async def set_timeout(request: dict = None):
+    request = request or {}
     """Set session timeout in seconds."""
     global SESSION_TIMEOUT
     timeout = request.get("timeout", 3600)
@@ -349,14 +367,15 @@ async def sync_credentials():
     """Return current credentials for MCP server to sync with dashboard."""
     with _creds_lock:
         connected = bool(_credentials.get("aws_access_key") or _credentials.get("use_localstack"))
+        ak = _credentials.get("aws_access_key", "")
         return {
             "connected": connected,
             "use_localstack": _credentials.get("use_localstack", False),
-            "aws_access_key": _credentials.get("aws_access_key", ""),
-            "aws_secret_key": _credentials.get("aws_secret_key", ""),
+            "aws_access_key": ak[:6] + "..." if ak else "",
+            "has_secret_key": bool(_credentials.get("aws_secret_key")),
+            "has_session_token": bool(_credentials.get("aws_session_token")),
             "aws_region": _credentials.get("aws_region", "us-east-1"),
             "endpoint_url": _credentials.get("endpoint_url", ""),
-            "aws_session_token": _credentials.get("aws_session_token", ""),
         }
 
 
@@ -365,7 +384,8 @@ async def sync_credentials():
 # ============================================================
 
 @app.post("/ec2")
-async def ec2_instances(request: dict = {}):
+async def ec2_instances(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ec2", METRICS_TTL)
     if cached:
@@ -408,7 +428,7 @@ async def ec2_instances(request: dict = {}):
                     if dp:
                         item["metrics"]["cpu_avg"] = round(dp[-1].get("Average", 0), 2)
                 except Exception:
-                    pass
+                    logger.warning("Failed to fetch CPU metric from CloudWatch")
             except Exception as e:
                 item["metrics"]["error"] = str(e)
             return item
@@ -429,7 +449,8 @@ async def ec2_instances(request: dict = {}):
 
 
 @app.post("/s3")
-async def s3_buckets(request: dict = {}):
+async def s3_buckets(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("s3", INVENTORY_TTL)
     if cached:
@@ -459,7 +480,7 @@ async def s3_buckets(request: dict = {}):
                 ver = s3.get_bucket_versioning(Bucket=name)
                 item["versioning"] = ver.get("Status") == "Enabled"
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
 
             try:
                 enc = s3.get_bucket_encryption(Bucket=name)
@@ -492,7 +513,8 @@ async def s3_buckets(request: dict = {}):
 
 
 @app.post("/lambda")
-async def lambda_functions(request: dict = {}):
+async def lambda_functions(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("lambda", METRICS_TTL)
     if cached:
@@ -529,7 +551,8 @@ async def lambda_functions(request: dict = {}):
                 dp = inv.get("Datapoints", [])
                 item["invocations"] = round(sum(d["Sum"] for d in dp))
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
+
             return item
 
         loop = asyncio.get_running_loop()
@@ -547,7 +570,8 @@ async def lambda_functions(request: dict = {}):
 
 
 @app.post("/rds")
-async def rds_instances(request: dict = {}):
+async def rds_instances(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("rds", METRICS_TTL)
     if cached:
@@ -592,7 +616,8 @@ async def rds_instances(request: dict = {}):
                 dp = conns.get("Datapoints", [])
                 item["connections"] = round(dp[-1]["Average"]) if dp else 0
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
+
             return item
 
         loop = asyncio.get_running_loop()
@@ -610,7 +635,8 @@ async def rds_instances(request: dict = {}):
 
 
 @app.post("/iam")
-async def iam_info(request: dict = {}):
+async def iam_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("iam", INVENTORY_TTL)
     if cached:
@@ -635,7 +661,8 @@ async def iam_info(request: dict = {}):
                 mfa = iam.list_mfa_devices(UserName=name)
                 item["mfaEnabled"] = len(mfa.get("MFADevices", [])) > 0
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
+
             try:
                 keys = iam.list_access_keys(UserName=name).get("AccessKeyMetadata", [])
                 for k in keys:
@@ -645,7 +672,8 @@ async def iam_info(request: dict = {}):
                         if age > item["accessKeyAge"]:
                             item["accessKeyAge"] = age
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
+
             return item
 
         loop = asyncio.get_running_loop()
@@ -679,7 +707,8 @@ async def iam_info(request: dict = {}):
 
 
 @app.post("/vpc")
-async def vpc_info(request: dict = {}):
+async def vpc_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("vpc", INVENTORY_TTL)
     if cached:
@@ -732,21 +761,46 @@ async def vpc_info(request: dict = {}):
 
 
 @app.post("/cost")
-async def cost_info(request: dict = {}):
+async def cost_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("cost", METRICS_TTL)
     if cached:
         return cached
 
-    # Use mock data for LocalStack (Cost Explorer not supported in free tier)
+    # Use simulation cost data for LocalStack (reads from sim engine if running)
     if _credentials.get("use_localstack"):
-        from mock_cost import get_mock_cost_data
-        result = get_mock_cost_data()
+        import os, json
+        cost_file = os.path.join(os.path.dirname(__file__), "sim_cost_data.json")
+        if os.path.exists(cost_file):
+            try:
+                with open(cost_file) as f:
+                    result = json.load(f)
+                result["cost_note"] = "LocalStack mode — live simulation cost data."
+                _set_cache("cost", result)
+                return result
+            except Exception:
+                pass
+        result = {
+            "today": 0, "yesterday": 0, "month": 0, "forecast": 0,
+            "daily": [], "daily_last_month": [], "byService": [], "byRegion": [],
+            "source": "idle",
+            "cost_note": "LocalStack mode — simulation engine not running. Run python3 localstack_test/simulation_engine.py",
+        }
         _set_cache("cost", result)
         return result
 
-    result = {"today": 0, "yesterday": 0, "month": 0, "forecast": 0, "daily": [], "byService": [], "byRegion": []}
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+    month_start = today_start.replace(day=1)
+    tomorrow = today_start + timedelta(days=1)
 
+    CE_TIMEOUT = 20  # Cost Explorer timeout (generous for slow connections)
+
+    result = {"today": 0, "yesterday": 0, "month": 0, "forecast": 0, "daily": [], "byService": [], "byRegion": [], "source": "real"}
+
+    # ---- Cost Explorer API (only source for real data) ----
     try:
         ce = _get_client("ce")
         loop = asyncio.get_running_loop()
@@ -759,80 +813,85 @@ async def cost_info(request: dict = {}):
             vals = r.get("ResultsByTime", [])
             return float(vals[0]["Total"]["UnblendedCost"]["Amount"]) if vals else 0
 
-        now = datetime.now(timezone.utc)
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday_start = today_start - timedelta(days=1)
-        month_start = today_start.replace(day=1)
+        async def _run_ce(fn, timeout=CE_TIMEOUT):
+            return await asyncio.wait_for(
+                loop.run_in_executor(EXECUTOR, fn), timeout=timeout
+            )
 
         today_cost, yesterday_cost, month_cost, daily_resp, by_svc_resp, by_region_resp = await asyncio.gather(
-            loop.run_in_executor(EXECUTOR, _get_daily_cost, today_start, now),
-            loop.run_in_executor(EXECUTOR, _get_daily_cost, yesterday_start, today_start),
-            loop.run_in_executor(EXECUTOR, _get_daily_cost, month_start, now),
-            loop.run_in_executor(EXECUTOR, lambda: ce.get_cost_and_usage(
-                TimePeriod={"Start": (now - timedelta(days=30)).strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
+            _run_ce(lambda: _get_daily_cost(today_start, tomorrow)),
+            _run_ce(lambda: _get_daily_cost(yesterday_start, today_start)),
+            _run_ce(lambda: _get_daily_cost(month_start, tomorrow)),
+            _run_ce(lambda: ce.get_cost_and_usage(
+                TimePeriod={"Start": (now - timedelta(days=30)).strftime("%Y-%m-%d"), "End": tomorrow.strftime("%Y-%m-%d")},
                 Granularity="DAILY", Metrics=["UnblendedCost"],
             )),
-            loop.run_in_executor(EXECUTOR, lambda: ce.get_cost_and_usage(
-                TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
+            _run_ce(lambda: ce.get_cost_and_usage(
+                TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": tomorrow.strftime("%Y-%m-%d")},
                 Granularity="MONTHLY", Metrics=["UnblendedCost"],
                 GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
             )),
-            loop.run_in_executor(EXECUTOR, lambda: ce.get_cost_and_usage(
-                TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
+            _run_ce(lambda: ce.get_cost_and_usage(
+                TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": tomorrow.strftime("%Y-%m-%d")},
                 Granularity="MONTHLY", Metrics=["UnblendedCost"],
                 GroupBy=[{"Type": "DIMENSION", "Key": "REGION"}],
             )),
+            return_exceptions=True,
         )
 
-        result["today"] = round(today_cost, 2)
-        result["yesterday"] = round(yesterday_cost, 2)
-        result["month"] = round(month_cost, 2)
+        if not isinstance(today_cost, Exception):
+            result["today"] = round(today_cost, 2)
+        if not isinstance(yesterday_cost, Exception):
+            result["yesterday"] = round(yesterday_cost, 2)
+        if not isinstance(month_cost, Exception):
+            result["month"] = round(month_cost, 2)
 
-        for dp in daily_resp.get("ResultsByTime", []):
-            result["daily"].append({
-                "date": dp["TimePeriod"]["Start"],
-                "cost": round(float(dp["Total"]["UnblendedCost"]["Amount"]), 2),
-            })
+        if not isinstance(daily_resp, Exception):
+            for dp in daily_resp.get("ResultsByTime", []):
+                result["daily"].append({
+                    "date": dp["TimePeriod"]["Start"],
+                    "cost": round(float(dp["Total"]["UnblendedCost"]["Amount"]), 2),
+                })
 
-        for g in by_svc_resp.get("ResultsByTime", [{}])[0].get("Groups", []):
-            result["byService"].append({
-                "service": g["Keys"][0],
-                "cost": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
-            })
-        result["byService"].sort(key=lambda x: x["cost"], reverse=True)
+        if not isinstance(by_svc_resp, Exception):
+            for g in by_svc_resp.get("ResultsByTime", [{}])[0].get("Groups", []):
+                result["byService"].append({
+                    "service": g["Keys"][0],
+                    "cost": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
+                })
+            result["byService"].sort(key=lambda x: x["cost"], reverse=True)
 
-        for g in by_region_resp.get("ResultsByTime", [{}])[0].get("Groups", []):
-            result["byRegion"].append({
-                "name": g["Keys"][0],
-                "value": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
-            })
-        result["byRegion"].sort(key=lambda x: x["value"], reverse=True)
+        if not isinstance(by_region_resp, Exception):
+            for g in by_region_resp.get("ResultsByTime", [{}])[0].get("Groups", []):
+                result["byRegion"].append({
+                    "name": g["Keys"][0],
+                    "value": round(float(g["Total"]["UnblendedCost"]["Amount"]), 2),
+                })
+            result["byRegion"].sort(key=lambda x: x["value"], reverse=True)
 
-        # Forecast: extrapolate month cost
         day_of_month = now.day
-        if day_of_month > 0 and month_cost > 0:
+        if day_of_month > 0 and not isinstance(month_cost, Exception) and month_cost > 0:
             import calendar
             days_in_month = calendar.monthrange(now.year, now.month)[1]
             result["forecast"] = round((month_cost / day_of_month) * days_in_month, 2)
 
-    except Exception as e:
-        error_msg = str(e)
-        logger.warning(f"Cost Explorer error: {error_msg}")
-        if "AccessDenied" in error_msg or "Unauthorized" in error_msg:
-            logger.warning("Cost Explorer not authorized — falling back to mock cost data")
-            from mock_cost import get_mock_cost_data
-            result = get_mock_cost_data()
-            result["source"] = "mock"
-            result["cost_note"] = "Cost Explorer not authorized. Showing estimated data. Ask your admin to add ce:GetCostAndUsage permission."
-        else:
-            result["error"] = error_msg
+        logger.info(f"Cost from Cost Explorer: month=${month_cost:.2f}")
+
+    except Exception as ce_err:
+        error_str = str(ce_err)
+        logger.warning(f"Cost Explorer fatal error: {error_str}")
+        if not result.get("daily"):
+            result = {"today": 0, "yesterday": 0, "month": 0, "forecast": 0, "daily": [], "byService": [], "byRegion": [], "source": "error"}
+        result["error"] = error_str
+        result["cost_note"] = f"Cost Explorer API error: {error_str[:200]}. Ensure your IAM user has ce:GetCostAndUsage permission and the region is us-east-1."
 
     _set_cache("cost", result)
     return result
 
 
 @app.post("/security")
-async def security_findings(request: dict = {}):
+async def security_findings(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("security", METRICS_TTL)
     if cached:
@@ -860,13 +919,15 @@ async def security_findings(request: dict = {}):
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
                         finding_id += 1
-                except ClientError:
-                    result["findings"].append({
-                        "id": f"SEC-{finding_id:03d}", "title": f"S3 bucket '{bucket['Name']}' has no encryption",
-                        "severity": "High", "resource": bucket["Name"], "region": _credentials.get("aws_region", "us-east-1"),
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    })
-                    finding_id += 1
+                except ClientError as e:
+                    err_code = e.response.get("Error", {}).get("Code", "")
+                    if err_code in ("ServerSideEncryptionConfigurationNotFoundError", "NoSuchBucket"):
+                        result["findings"].append({
+                            "id": f"SEC-{finding_id:03d}", "title": f"S3 bucket '{bucket['Name']}' has no encryption",
+                            "severity": "High", "resource": bucket["Name"], "region": _credentials.get("aws_region", "us-east-1"),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        })
+                        finding_id += 1
 
                 try:
                     access = s3_client.get_public_access_block(Bucket=bucket["Name"])
@@ -878,10 +939,18 @@ async def security_findings(request: dict = {}):
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
                         finding_id += 1
-                except ClientError:
-                    pass
+                except ClientError as e:
+                    err_code = e.response.get("Error", {}).get("Code", "")
+                    if err_code == "NoSuchPublicAccessBlockConfiguration":
+                        result["findings"].append({
+                            "id": f"SEC-{finding_id:03d}", "title": f"S3 bucket '{bucket['Name']}' has no public access block (completely open)",
+                            "severity": "Critical", "resource": bucket["Name"], "region": _credentials.get("aws_region", "us-east-1"),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        })
+                        finding_id += 1
         except Exception:
-            pass
+            logger.warning("Operation failed", exc_info=True)
+
 
         try:
             sgs = ec2_client.describe_security_groups().get("SecurityGroups", [])
@@ -889,7 +958,7 @@ async def security_findings(request: dict = {}):
                 for perm in sg.get("IpPermissions", []):
                     for ip_range in perm.get("IpRanges", []):
                         if ip_range.get("CidrIp") == "0.0.0.0/0":
-                            port = perm.get("FromPort", "all")
+                            port = perm.get("FromPort", "all") if perm.get("FromPort") is not None else "all"
                             result["findings"].append({
                                 "id": f"SEC-{finding_id:03d}",
                                 "title": f"Security group '{sg['GroupName']}' allows 0.0.0.0/0 on port {port}",
@@ -899,8 +968,21 @@ async def security_findings(request: dict = {}):
                             })
                             finding_id += 1
                             break
+                    for ip_range in perm.get("Ipv6Ranges", []):
+                        if ip_range.get("CidrIpv6") == "::/0":
+                            port = perm.get("FromPort", "all") if perm.get("FromPort") is not None else "all"
+                            result["findings"].append({
+                                "id": f"SEC-{finding_id:03d}",
+                                "title": f"Security group '{sg['GroupName']}' allows ::/0 (IPv6) on port {port}",
+                                "severity": "Critical" if port in [22, 3389] else "High",
+                                "resource": sg["GroupId"], "region": _credentials.get("aws_region", "us-east-1"),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            })
+                            finding_id += 1
+                            break
         except Exception:
-            pass
+            logger.warning("Operation failed", exc_info=True)
+
 
         try:
             users = iam_client.list_users().get("Users", [])
@@ -915,7 +997,8 @@ async def security_findings(request: dict = {}):
                     })
                     finding_id += 1
         except Exception:
-            pass
+            logger.warning("Operation failed", exc_info=True)
+
 
     except Exception as e:
         result["error"] = str(e)
@@ -925,7 +1008,8 @@ async def security_findings(request: dict = {}):
 
 
 @app.post("/activity")
-async def activity_timeline(request: dict = {}):
+async def activity_timeline(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("activity", METRICS_TTL)
     if cached:
@@ -974,7 +1058,8 @@ async def activity_timeline(request: dict = {}):
 # ============================================================
 
 @app.post("/ebs")
-async def ebs_volumes(request: dict = {}):
+async def ebs_volumes(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ebs", INVENTORY_TTL)
     if cached:
@@ -1015,7 +1100,8 @@ async def ebs_volumes(request: dict = {}):
 
 
 @app.post("/route53")
-async def route53_info(request: dict = {}):
+async def route53_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("route53", INVENTORY_TTL)
     if cached:
@@ -1047,7 +1133,8 @@ async def route53_info(request: dict = {}):
 
 
 @app.post("/elb")
-async def elb_info(request: dict = {}):
+async def elb_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("elb", INVENTORY_TTL)
     if cached:
@@ -1086,7 +1173,8 @@ async def elb_info(request: dict = {}):
 
 
 @app.post("/auto_scaling")
-async def auto_scaling_info(request: dict = {}):
+async def auto_scaling_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("auto_scaling", INVENTORY_TTL)
     if cached:
@@ -1122,7 +1210,8 @@ async def auto_scaling_info(request: dict = {}):
 
 
 @app.post("/cloudwatch_dash")
-async def cloudwatch_dashboards(request: dict = {}):
+async def cloudwatch_dashboards(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("cloudwatch_dash", METRICS_TTL)
     if cached:
@@ -1158,7 +1247,8 @@ async def cloudwatch_dashboards(request: dict = {}):
 
 
 @app.post("/ssm")
-async def ssm_info(request: dict = {}):
+async def ssm_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ssm", INVENTORY_TTL)
     if cached:
@@ -1194,7 +1284,8 @@ async def ssm_info(request: dict = {}):
 
 
 @app.post("/ecr")
-async def ecr_info(request: dict = {}):
+async def ecr_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ecr", INVENTORY_TTL)
     if cached:
@@ -1219,7 +1310,8 @@ async def ecr_info(request: dict = {}):
 
 
 @app.post("/ecs")
-async def ecs_info(request: dict = {}):
+async def ecs_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("ecs", INVENTORY_TTL)
     if cached:
@@ -1245,7 +1337,8 @@ async def ecs_info(request: dict = {}):
                             "running": s.get("runningCount", 0),
                         })
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
+
     except Exception as e:
         result["error"] = str(e)
 
@@ -1254,7 +1347,8 @@ async def ecs_info(request: dict = {}):
 
 
 @app.post("/eks")
-async def eks_info(request: dict = {}):
+async def eks_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("eks", INVENTORY_TTL)
     if cached:
@@ -1284,7 +1378,8 @@ async def eks_info(request: dict = {}):
 
 
 @app.post("/cloudformation")
-async def cloudformation_info(request: dict = {}):
+async def cloudformation_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("cloudformation", INVENTORY_TTL)
     if cached:
@@ -1312,7 +1407,8 @@ async def cloudformation_info(request: dict = {}):
 
 
 @app.post("/codepipeline")
-async def codepipeline_info(request: dict = {}):
+async def codepipeline_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("codepipeline", INVENTORY_TTL)
     if cached:
@@ -1336,7 +1432,8 @@ async def codepipeline_info(request: dict = {}):
 
 
 @app.post("/codebuild")
-async def codebuild_info(request: dict = {}):
+async def codebuild_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("codebuild", INVENTORY_TTL)
     if cached:
@@ -1356,7 +1453,8 @@ async def codebuild_info(request: dict = {}):
 
 
 @app.post("/codedeploy")
-async def codedeploy_info(request: dict = {}):
+async def codedeploy_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("codedeploy", INVENTORY_TTL)
     if cached:
@@ -1379,7 +1477,8 @@ async def codedeploy_info(request: dict = {}):
                     "createTime": dep.get("createTime", "").isoformat() if dep.get("createTime") else "",
                 })
             except Exception:
-                pass
+                logger.warning("Operation failed", exc_info=True)
+
     except Exception as e:
         result["error"] = str(e)
 
@@ -1388,7 +1487,8 @@ async def codedeploy_info(request: dict = {}):
 
 
 @app.post("/secrets_manager")
-async def secrets_manager_info(request: dict = {}):
+async def secrets_manager_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("secrets_manager", INVENTORY_TTL)
     if cached:
@@ -1414,7 +1514,8 @@ async def secrets_manager_info(request: dict = {}):
 
 
 @app.post("/parameter_store")
-async def parameter_store_info(request: dict = {}):
+async def parameter_store_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("parameter_store", INVENTORY_TTL)
     if cached:
@@ -1440,7 +1541,8 @@ async def parameter_store_info(request: dict = {}):
 
 
 @app.post("/acm")
-async def acm_info(request: dict = {}):
+async def acm_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("acm", INVENTORY_TTL)
     if cached:
@@ -1465,7 +1567,8 @@ async def acm_info(request: dict = {}):
 
 
 @app.post("/dynamodb")
-async def dynamodb_info(request: dict = {}):
+async def dynamodb_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("dynamodb", INVENTORY_TTL)
     if cached:
@@ -1495,7 +1598,8 @@ async def dynamodb_info(request: dict = {}):
 
 
 @app.post("/sns")
-async def sns_info(request: dict = {}):
+async def sns_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("sns", INVENTORY_TTL)
     if cached:
@@ -1527,7 +1631,8 @@ async def sns_info(request: dict = {}):
 
 
 @app.post("/sqs")
-async def sqs_info(request: dict = {}):
+async def sqs_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("sqs", INVENTORY_TTL)
     if cached:
@@ -1560,7 +1665,8 @@ async def sqs_info(request: dict = {}):
 
 
 @app.post("/eventbridge")
-async def eventbridge_info(request: dict = {}):
+async def eventbridge_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("eventbridge", INVENTORY_TTL)
     if cached:
@@ -1594,7 +1700,8 @@ async def eventbridge_info(request: dict = {}):
 
 
 @app.post("/backup")
-async def backup_info(request: dict = {}):
+async def backup_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("backup", INVENTORY_TTL)
     if cached:
@@ -1646,7 +1753,8 @@ async def backup_info(request: dict = {}):
 
 
 @app.post("/budgets")
-async def budgets_info(request: dict = {}):
+async def budgets_info(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("budgets", INVENTORY_TTL)
     if cached:
@@ -1654,10 +1762,22 @@ async def budgets_info(request: dict = {}):
 
     result = {"budgets": []}
 
-    # Use mock budgets for LocalStack
+    # Use simulation cost data for budgets in LocalStack
     if _credentials.get("use_localstack", False):
-        from mock_cost import get_mock_budgets
-        result["budgets"] = get_mock_budgets()
+        import os, json
+        cost_file = os.path.join(os.path.dirname(__file__), "sim_cost_data.json")
+        if os.path.exists(cost_file):
+            try:
+                with open(cost_file) as f:
+                    d = json.load(f)
+                month = d.get("month", 0)
+                result["budgets"] = [
+                    {"name": "Monthly Total Spend", "type": "COST", "timeUnit": "MONTHLY", "amount": "2000.00", "spent": f"{month:.2f}"},
+                    {"name": "EC2 Compute Spend", "type": "COST", "timeUnit": "MONTHLY", "amount": "800.00", "spent": f"{month * 0.35:.2f}"},
+                    {"name": "Simulation Budget", "type": "COST", "timeUnit": "MONTHLY", "amount": "5000.00", "spent": f"{month:.2f}"},
+                ]
+            except Exception:
+                pass
         _set_cache("budgets", result)
         return result
 
@@ -1691,7 +1811,8 @@ async def budgets_info(request: dict = {}):
 # ============================================================
 
 @app.post("/dashboard")
-async def dashboard(request: dict = {}):
+async def dashboard(request: dict = None):
+    request = request or {}
     _ensure_credentials(request.get("accessKeyId"), request.get("secretAccessKey"), request.get("sessionToken"), request.get("region"), request.get("use_localstack"))
     cached = _cached("dashboard", METRICS_TTL)
     if cached:
@@ -1724,7 +1845,8 @@ async def dashboard(request: dict = {}):
 # LOCAL AI ANALYSIS ENGINE (No LLM needed - Rule-based intelligence)
 # ============================================================
 
-async def _gather_all_aws_data(request: dict = {}):
+async def _gather_all_aws_data(request: dict = None):
+    request = request or {}
     """Gather all AWS data in parallel for analysis."""
     try:
         ec2_data, s3_data, lambda_data, rds_data, sec_data, iam_data, cost_data = await asyncio.gather(
@@ -2242,7 +2364,8 @@ Answer in 3-5 sentences max. Use markdown formatting."""
 # ============================================================
 
 @app.post("/chat")
-async def chat(request: dict = {}):
+async def chat(request: dict = None):
+    request = request or {}
     message = request.get("message", "").strip()
     if not message:
         return {"response": "Please type a command or question.", "tools_used": []}
@@ -2562,7 +2685,7 @@ async def chat(request: dict = {}):
                         response = claude_response
                         tools_used.append("claude_api")
                 except Exception:
-                    pass
+                    logger.warning("Claude API chat failed, falling back to Ollama")
 
             # Try Ollama second
             if not response:
@@ -2572,7 +2695,7 @@ async def chat(request: dict = {}):
                         response = ollama_response
                         tools_used.append("ollama_local")
                 except Exception:
-                    pass
+                    logger.warning("Ollama local chat failed")
 
             # Fallback to local analysis
             if not response:
@@ -2601,7 +2724,7 @@ async def chat(request: dict = {}):
                         response = claude_response
                         tools_used.append("claude_api")
                 except Exception:
-                    pass
+                    logger.warning("Claude API chat failed (smart_fallback)")
 
             # Try Ollama second (fast, local)
             if not response:
@@ -2611,7 +2734,7 @@ async def chat(request: dict = {}):
                         response = ollama_response
                         tools_used.append("ollama_local")
                 except Exception:
-                    pass
+                    logger.warning("Ollama local chat failed (smart_fallback)")
 
             # Fallback to local analysis
             if not response:

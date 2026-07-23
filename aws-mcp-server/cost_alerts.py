@@ -26,7 +26,8 @@ async def get_alert_config():
 
 
 @router.post("/cost/alert/config")
-async def save_alert_config(request: dict = {}):
+async def save_alert_config(request: dict = None):
+    request = request or {}
     """Save alert configuration (thresholds + email settings)."""
     update_fields = {}
 
@@ -92,8 +93,16 @@ async def get_alert_status():
     use_localstack = _credentials.get("use_localstack", False)
 
     if use_localstack:
-        from mock_cost import get_mock_cost_data
-        cost_data = get_mock_cost_data()
+        import os, json
+        cost_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "aws-mcp-server", "sim_cost_data.json")
+        if os.path.exists(cost_file):
+            try:
+                with open(cost_file) as f:
+                    cost_data = json.load(f)
+            except Exception:
+                cost_data = {"today": 0, "month": 0, "daily": [], "byService": []}
+        else:
+            cost_data = {"today": 0, "month": 0, "daily": [], "byService": []}
     else:
         cached = _cached("cost", 30)
         if cached:
@@ -103,8 +112,9 @@ async def get_alert_status():
                 ce = _get_client("ce")
                 now = datetime.now(timezone.utc)
                 today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                tomorrow = today_start + timedelta(days=1)
                 r = ce.get_cost_and_usage(
-                    TimePeriod={"Start": today_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
+                    TimePeriod={"Start": today_start.strftime("%Y-%m-%d"), "End": tomorrow.strftime("%Y-%m-%d")},
                     Granularity="DAILY",
                     Metrics=["UnblendedCost"],
                 )
@@ -113,7 +123,7 @@ async def get_alert_status():
 
                 month_start = today_start.replace(day=1)
                 r_month = ce.get_cost_and_usage(
-                    TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": now.strftime("%Y-%m-%d")},
+                    TimePeriod={"Start": month_start.strftime("%Y-%m-%d"), "End": tomorrow.strftime("%Y-%m-%d")},
                     Granularity="MONTHLY",
                     Metrics=["UnblendedCost"],
                 )
@@ -147,7 +157,8 @@ async def get_alert_status():
 
 
 @router.post("/cost/alert/test")
-async def test_alert_email(request: dict = {}):
+async def test_alert_email(request: dict = None):
+    request = request or {}
     """Send a test email to verify SMTP configuration."""
     config = get_config()
     config_dict = {

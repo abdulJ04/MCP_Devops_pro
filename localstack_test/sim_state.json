@@ -1,0 +1,1953 @@
+{
+  "ec2": {
+    "i-fade649e256d4ff78": {
+      "id": "i-fade649e256d4ff78",
+      "created_at": "2026-07-23T09:23:14.377619+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "t3.small",
+        "state": "stopped"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T09:25:44.545761+00:00"
+    },
+    "i-61d3aba3f190dbd06": {
+      "id": "i-61d3aba3f190dbd06",
+      "created_at": "2026-07-23T09:27:14.585588+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "m5.large",
+        "state": "stopped"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T09:34:45.252813+00:00"
+    },
+    "i-707f7fae927f51a8f": {
+      "id": "i-707f7fae927f51a8f",
+      "created_at": "2026-07-23T09:36:15.396995+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-29c680fd34ca4410b": {
+      "id": "i-29c680fd34ca4410b",
+      "created_at": "2026-07-23T09:37:15.645659+00:00",
+      "metadata": {
+        "name": "dev-api-01",
+        "type": "t2.micro",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-1683b98b56f54421d": {
+      "id": "i-1683b98b56f54421d",
+      "created_at": "2026-07-23T09:39:15.998469+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-0940a0a7e94e3ad75": {
+      "id": "i-0940a0a7e94e3ad75",
+      "created_at": "2026-07-23T09:45:48.652876+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-a5e8434db8f607625": {
+      "id": "i-a5e8434db8f607625",
+      "created_at": "2026-07-23T09:46:18.758802+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-1f63b97d2cbdfe5a7": {
+      "id": "i-1f63b97d2cbdfe5a7",
+      "created_at": "2026-07-23T09:46:33.853848+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-55d322d3e00d7dc26": {
+      "id": "i-55d322d3e00d7dc26",
+      "created_at": "2026-07-23T09:46:49.013381+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-8cf32fe53bdadfbb1": {
+      "id": "i-8cf32fe53bdadfbb1",
+      "created_at": "2026-07-23T09:48:35.052464+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-3d239ac6670751c74": {
+      "id": "i-3d239ac6670751c74",
+      "created_at": "2026-07-23T09:48:50.166974+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-1d343614555320c37": {
+      "id": "i-1d343614555320c37",
+      "created_at": "2026-07-23T09:49:05.315888+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-280188a9b98b0d6e8": {
+      "id": "i-280188a9b98b0d6e8",
+      "created_at": "2026-07-23T09:49:20.513645+00:00",
+      "metadata": {
+        "name": "monitoring-01",
+        "type": "m5.large",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-153785e20ef3e748c": {
+      "id": "i-153785e20ef3e748c",
+      "created_at": "2026-07-23T09:54:23.986868+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "m5.large",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-3eb1248ff78316b25": {
+      "id": "i-3eb1248ff78316b25",
+      "created_at": "2026-07-23T09:55:09.460450+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T09:57:42.952061+00:00"
+    },
+    "i-e77c06f0d0c3dd2e5": {
+      "id": "i-e77c06f0d0c3dd2e5",
+      "created_at": "2026-07-23T09:58:28.404745+00:00",
+      "metadata": {
+        "name": "dev-worker-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-33b3bd3d515090853": {
+      "id": "i-33b3bd3d515090853",
+      "created_at": "2026-07-23T09:59:44.342024+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-5d4632443c6a98579": {
+      "id": "i-5d4632443c6a98579",
+      "created_at": "2026-07-23T09:59:59.558516+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-bf15ecb3f81c7b0e6": {
+      "id": "i-bf15ecb3f81c7b0e6",
+      "created_at": "2026-07-23T10:01:00.386460+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-35d795823f7c3c664": {
+      "id": "i-35d795823f7c3c664",
+      "created_at": "2026-07-23T10:02:01.347716+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-cd4f37d5d4ef74551": {
+      "id": "i-cd4f37d5d4ef74551",
+      "created_at": "2026-07-23T10:04:19.978668+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-17d5c129deaf6fd80": {
+      "id": "i-17d5c129deaf6fd80",
+      "created_at": "2026-07-23T10:06:53.341252+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-ade69c2f203cdc0ec": {
+      "id": "i-ade69c2f203cdc0ec",
+      "created_at": "2026-07-23T10:18:58.490187+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-2d65e1e05047f9b9f": {
+      "id": "i-2d65e1e05047f9b9f",
+      "created_at": "2026-07-23T10:23:01.535609+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-42ea2879ee6617820": {
+      "id": "i-42ea2879ee6617820",
+      "created_at": "2026-07-23T10:23:47.469193+00:00",
+      "metadata": {
+        "name": "prod-app-02",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-64bdb4488d6b0f85e": {
+      "id": "i-64bdb4488d6b0f85e",
+      "created_at": "2026-07-23T10:27:22.223960+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-214bf0d09ae975c72": {
+      "id": "i-214bf0d09ae975c72",
+      "created_at": "2026-07-23T10:28:38.839301+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:50:06.495941+00:00"
+    },
+    "i-5d336919ea6f84dd7": {
+      "id": "i-5d336919ea6f84dd7",
+      "created_at": "2026-07-23T10:30:10.895682+00:00",
+      "metadata": {
+        "name": "prod-app-02",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-ec265ebecfdfcd9aa": {
+      "id": "i-ec265ebecfdfcd9aa",
+      "created_at": "2026-07-23T10:31:12.283796+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-1e963b18928c244d0": {
+      "id": "i-1e963b18928c244d0",
+      "created_at": "2026-07-23T10:31:43.376769+00:00",
+      "metadata": {
+        "name": "dev-api-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:33:16.361912+00:00"
+    },
+    "i-86a0c0361d4eb7df1": {
+      "id": "i-86a0c0361d4eb7df1",
+      "created_at": "2026-07-23T10:32:14.672335+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:40:22.250392+00:00"
+    },
+    "i-c05e3eda7a519625d": {
+      "id": "i-c05e3eda7a519625d",
+      "created_at": "2026-07-23T10:34:04.697771+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:51:05.076298+00:00"
+    },
+    "i-64807157945af25ab": {
+      "id": "i-64807157945af25ab",
+      "created_at": "2026-07-23T10:38:00.852483+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:58:37.639399+00:00"
+    },
+    "i-d17614db2071e9139": {
+      "id": "i-d17614db2071e9139",
+      "created_at": "2026-07-23T10:38:31.909428+00:00",
+      "metadata": {
+        "name": "dev-worker-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:43:30.281379+00:00"
+    },
+    "i-5f259380bd63b997f": {
+      "id": "i-5f259380bd63b997f",
+      "created_at": "2026-07-23T10:43:14.610936+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:46:08.272994+00:00"
+    },
+    "i-d93a18779f4069d00": {
+      "id": "i-d93a18779f4069d00",
+      "created_at": "2026-07-23T10:44:01.387368+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:49:02.982717+00:00"
+    },
+    "i-3028067908ffa33a5": {
+      "id": "i-3028067908ffa33a5",
+      "created_at": "2026-07-23T10:45:52.449630+00:00",
+      "metadata": {
+        "name": "monitoring-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-6c50fb39006e1fc82": {
+      "id": "i-6c50fb39006e1fc82",
+      "created_at": "2026-07-23T10:46:56.202818+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-12aef733ee6dee394": {
+      "id": "i-12aef733ee6dee394",
+      "created_at": "2026-07-23T10:47:11.981996+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-c2df1dbf06d536469": {
+      "id": "i-c2df1dbf06d536469",
+      "created_at": "2026-07-23T10:47:43.605320+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-427a40d651f0541c8": {
+      "id": "i-427a40d651f0541c8",
+      "created_at": "2026-07-23T10:47:59.464849+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:34:45.743161+00:00"
+    },
+    "i-104b23a497f7bbdf7": {
+      "id": "i-104b23a497f7bbdf7",
+      "created_at": "2026-07-23T10:49:34.692673+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-76395bf60f8e7147a": {
+      "id": "i-76395bf60f8e7147a",
+      "created_at": "2026-07-23T10:52:13.766086+00:00",
+      "metadata": {
+        "name": "prod-app-02",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-d37476366226b09af": {
+      "id": "i-d37476366226b09af",
+      "created_at": "2026-07-23T10:52:29.875083+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "m5.large",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-962df416f7a764fab": {
+      "id": "i-962df416f7a764fab",
+      "created_at": "2026-07-23T10:53:01.237137+00:00",
+      "metadata": {
+        "name": "dev-worker-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-b09a8cd474d2ffa6f": {
+      "id": "i-b09a8cd474d2ffa6f",
+      "created_at": "2026-07-23T10:54:05.507045+00:00",
+      "metadata": {
+        "name": "dev-api-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-84c926c30f1cda31e": {
+      "id": "i-84c926c30f1cda31e",
+      "created_at": "2026-07-23T10:55:25.411552+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-25bb6251f899d993c": {
+      "id": "i-25bb6251f899d993c",
+      "created_at": "2026-07-23T10:55:41.178264+00:00",
+      "metadata": {
+        "name": "monitoring-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-63d69763e07181c8a": {
+      "id": "i-63d69763e07181c8a",
+      "created_at": "2026-07-23T10:56:14.210036+00:00",
+      "metadata": {
+        "name": "prod-app-01",
+        "type": "t3.small",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-a8bac62d86a31a715": {
+      "id": "i-a8bac62d86a31a715",
+      "created_at": "2026-07-23T10:57:50.236140+00:00",
+      "metadata": {
+        "name": "dev-api-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-22aa54a60f429af00": {
+      "id": "i-22aa54a60f429af00",
+      "created_at": "2026-07-23T10:58:21.831335+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-01e789778c6583e52": {
+      "id": "i-01e789778c6583e52",
+      "created_at": "2026-07-23T10:59:57.151523+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-755ca508e14e942dd": {
+      "id": "i-755ca508e14e942dd",
+      "created_at": "2026-07-23T11:02:35.480532+00:00",
+      "metadata": {
+        "name": "prod-app-02",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-5383c29d35ddefa2c": {
+      "id": "i-5383c29d35ddefa2c",
+      "created_at": "2026-07-23T11:04:10.342156+00:00",
+      "metadata": {
+        "name": "dev-api-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-73061df9374d43967": {
+      "id": "i-73061df9374d43967",
+      "created_at": "2026-07-23T11:07:22.090228+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "t2.micro",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-97f6b989664267140": {
+      "id": "i-97f6b989664267140",
+      "created_at": "2026-07-23T11:09:30.684264+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-23cc66881209230a4": {
+      "id": "i-23cc66881209230a4",
+      "created_at": "2026-07-23T11:10:35.302997+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-58390ca3fa6d5f4e4": {
+      "id": "i-58390ca3fa6d5f4e4",
+      "created_at": "2026-07-23T11:13:50.975091+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-4f094c35c9431a7dd": {
+      "id": "i-4f094c35c9431a7dd",
+      "created_at": "2026-07-23T11:14:23.410211+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-022289bffb644f3c4": {
+      "id": "i-022289bffb644f3c4",
+      "created_at": "2026-07-23T11:15:14.269433+00:00",
+      "metadata": {
+        "name": "monitoring-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-4cdbc5906688bf411": {
+      "id": "i-4cdbc5906688bf411",
+      "created_at": "2026-07-23T11:15:47.025088+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-efbd92948f52cd01e": {
+      "id": "i-efbd92948f52cd01e",
+      "created_at": "2026-07-23T11:16:19.535127+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-66e60f3a864cad340": {
+      "id": "i-66e60f3a864cad340",
+      "created_at": "2026-07-23T11:16:35.813389+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t2.micro",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-0fd78406b1f56b088": {
+      "id": "i-0fd78406b1f56b088",
+      "created_at": "2026-07-23T12:31:50.254750+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-b7d3e9f3f05024f4e": {
+      "id": "i-b7d3e9f3f05024f4e",
+      "created_at": "2026-07-23T12:32:41.255290+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-26ca4bcadfb8de4e9": {
+      "id": "i-26ca4bcadfb8de4e9",
+      "created_at": "2026-07-23T12:35:20.726336+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-970565f5c6dcbe394": {
+      "id": "i-970565f5c6dcbe394",
+      "created_at": "2026-07-23T12:37:25.569044+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t2.micro",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-13615853e6585efcd": {
+      "id": "i-13615853e6585efcd",
+      "created_at": "2026-07-23T12:38:36.492844+00:00",
+      "metadata": {
+        "name": "cache-01",
+        "type": "m5.large",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-2b8e99f393b2702b3": {
+      "id": "i-2b8e99f393b2702b3",
+      "created_at": "2026-07-23T12:40:26.733387+00:00",
+      "metadata": {
+        "name": "dev-worker-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-52ef8038ff8141a7c": {
+      "id": "i-52ef8038ff8141a7c",
+      "created_at": "2026-07-23T12:42:01.386352+00:00",
+      "metadata": {
+        "name": "dev-api-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-2e2db6f0970e30556": {
+      "id": "i-2e2db6f0970e30556",
+      "created_at": "2026-07-23T12:43:01.231330+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "t3.small",
+        "state": "stopped"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:52:58.831169+00:00"
+    },
+    "i-b4d7cea41028842c6": {
+      "id": "i-b4d7cea41028842c6",
+      "created_at": "2026-07-23T12:43:41.549175+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "c5.xlarge",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-dae8366607a34cdad": {
+      "id": "i-dae8366607a34cdad",
+      "created_at": "2026-07-23T12:45:51.724741+00:00",
+      "metadata": {
+        "name": "monitoring-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-74dde807902de48cf": {
+      "id": "i-74dde807902de48cf",
+      "created_at": "2026-07-23T12:46:56.784979+00:00",
+      "metadata": {
+        "name": "prod-worker-01",
+        "type": "t3.medium",
+        "state": "stopped"
+      },
+      "active": true
+    },
+    "i-9a9415f4ea1f19634": {
+      "id": "i-9a9415f4ea1f19634",
+      "created_at": "2026-07-23T12:49:10.866655+00:00",
+      "metadata": {
+        "name": "build-server-01",
+        "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    }
+  },
+  "s3": {},
+  "iam": {
+    "mike.chen-1": {
+      "id": "mike.chen-1",
+      "created_at": "2026-07-23T09:24:42.445385+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-623": {
+      "id": "jane.smith-623",
+      "created_at": "2026-07-23T09:26:12.499629+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-2": {
+      "id": "tom.brown-2",
+      "created_at": "2026-07-23T09:29:12.606381+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-409": {
+      "id": "sarah.wilson-409",
+      "created_at": "2026-07-23T09:31:42.660009+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-53": {
+      "id": "john.doe-53",
+      "created_at": "2026-07-23T09:34:12.730223+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-931": {
+      "id": "tom.brown-931",
+      "created_at": "2026-07-23T09:35:42.773758+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-993": {
+      "id": "john.doe-993",
+      "created_at": "2026-07-23T09:37:42.828652+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-365": {
+      "id": "mike.chen-365",
+      "created_at": "2026-07-23T09:41:12.909631+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-843": {
+      "id": "ryan.jones-843",
+      "created_at": "2026-07-23T09:46:16.842268+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T09:51:32.182835+00:00"
+    },
+    "mike.chen-634": {
+      "id": "mike.chen-634",
+      "created_at": "2026-07-23T09:47:46.896750+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-659": {
+      "id": "nina.patel-659",
+      "created_at": "2026-07-23T09:48:31.933736+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-344": {
+      "id": "john.doe-344",
+      "created_at": "2026-07-23T09:51:47.264166+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-655": {
+      "id": "john.doe-655",
+      "created_at": "2026-07-23T09:53:02.527572+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-413": {
+      "id": "john.doe-413",
+      "created_at": "2026-07-23T09:53:32.987386+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T09:54:33.025846+00:00"
+    },
+    "mike.chen-776": {
+      "id": "mike.chen-776",
+      "created_at": "2026-07-23T09:54:18.015379+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:06:48.330524+00:00"
+    },
+    "jane.smith-34": {
+      "id": "jane.smith-34",
+      "created_at": "2026-07-23T09:58:18.117657+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-535": {
+      "id": "sarah.wilson-535",
+      "created_at": "2026-07-23T09:58:33.124147+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:06:33.315661+00:00"
+    },
+    "emma.davis-748": {
+      "id": "emma.davis-748",
+      "created_at": "2026-07-23T09:59:03.141587+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-448": {
+      "id": "jane.smith-448",
+      "created_at": "2026-07-23T10:00:03.162116+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-958": {
+      "id": "alex.kumar-958",
+      "created_at": "2026-07-23T10:00:48.172952+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-301": {
+      "id": "john.doe-301",
+      "created_at": "2026-07-23T10:01:03.179452+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-100": {
+      "id": "sarah.wilson-100",
+      "created_at": "2026-07-23T10:01:18.187562+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-229": {
+      "id": "nina.patel-229",
+      "created_at": "2026-07-23T10:04:18.261744+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-696": {
+      "id": "emma.davis-696",
+      "created_at": "2026-07-23T10:04:33.269276+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-426": {
+      "id": "sarah.wilson-426",
+      "created_at": "2026-07-23T10:05:18.285820+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-403": {
+      "id": "emma.davis-403",
+      "created_at": "2026-07-23T10:07:03.338604+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-202": {
+      "id": "sarah.wilson-202",
+      "created_at": "2026-07-23T10:18:41.338155+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-299": {
+      "id": "john.doe-299",
+      "created_at": "2026-07-23T10:22:13.600215+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:34:13.957247+00:00"
+    },
+    "sarah.wilson-698": {
+      "id": "sarah.wilson-698",
+      "created_at": "2026-07-23T10:22:58.612223+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-593": {
+      "id": "tom.brown-593",
+      "created_at": "2026-07-23T10:23:58.644486+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:31:13.853441+00:00"
+    },
+    "ryan.jones-250": {
+      "id": "ryan.jones-250",
+      "created_at": "2026-07-23T10:25:58.701368+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-578": {
+      "id": "jane.smith-578",
+      "created_at": "2026-07-23T10:26:13.707424+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-973": {
+      "id": "ryan.jones-973",
+      "created_at": "2026-07-23T10:26:28.713722+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:32:13.887928+00:00"
+    },
+    "sarah.wilson-373": {
+      "id": "sarah.wilson-373",
+      "created_at": "2026-07-23T10:26:58.728349+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-44": {
+      "id": "tom.brown-44",
+      "created_at": "2026-07-23T10:27:13.735640+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-271": {
+      "id": "sarah.wilson-271",
+      "created_at": "2026-07-23T10:27:43.753649+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:47:29.380781+00:00"
+    },
+    "ryan.jones-315": {
+      "id": "ryan.jones-315",
+      "created_at": "2026-07-23T10:28:58.772209+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-65": {
+      "id": "emma.davis-65",
+      "created_at": "2026-07-23T10:30:58.842492+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-975": {
+      "id": "tom.brown-975",
+      "created_at": "2026-07-23T10:32:43.905974+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-813": {
+      "id": "emma.davis-813",
+      "created_at": "2026-07-23T10:32:58.914703+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-302": {
+      "id": "tom.brown-302",
+      "created_at": "2026-07-23T10:33:43.937726+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-903": {
+      "id": "alex.kumar-903",
+      "created_at": "2026-07-23T10:37:44.095579+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-252": {
+      "id": "ryan.jones-252",
+      "created_at": "2026-07-23T10:38:59.148153+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-713": {
+      "id": "ryan.jones-713",
+      "created_at": "2026-07-23T10:39:14.156557+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-207": {
+      "id": "lisa.park-207",
+      "created_at": "2026-07-23T10:39:44.179601+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-122": {
+      "id": "nina.patel-122",
+      "created_at": "2026-07-23T10:40:14.189093+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:06:59.993295+00:00"
+    },
+    "jane.smith-738": {
+      "id": "jane.smith-738",
+      "created_at": "2026-07-23T10:40:44.211244+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-307": {
+      "id": "alex.kumar-307",
+      "created_at": "2026-07-23T10:40:59.217594+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-465": {
+      "id": "sarah.wilson-465",
+      "created_at": "2026-07-23T10:41:14.223530+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:48:44.433239+00:00"
+    },
+    "tom.brown-206": {
+      "id": "tom.brown-206",
+      "created_at": "2026-07-23T10:42:59.258401+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:00:44.779538+00:00"
+    },
+    "lisa.park-680": {
+      "id": "lisa.park-680",
+      "created_at": "2026-07-23T10:43:44.270475+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-931": {
+      "id": "jane.smith-931",
+      "created_at": "2026-07-23T10:46:14.334707+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-383": {
+      "id": "nina.patel-383",
+      "created_at": "2026-07-23T10:46:29.344439+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T10:50:44.516628+00:00"
+    },
+    "john.doe-860": {
+      "id": "john.doe-860",
+      "created_at": "2026-07-23T10:47:59.392488+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-756": {
+      "id": "nina.patel-756",
+      "created_at": "2026-07-23T10:48:59.443992+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-730": {
+      "id": "ryan.jones-730",
+      "created_at": "2026-07-23T10:50:14.488339+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-997": {
+      "id": "emma.davis-997",
+      "created_at": "2026-07-23T10:51:14.524104+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-125": {
+      "id": "mike.chen-125",
+      "created_at": "2026-07-23T10:54:44.628629+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-330": {
+      "id": "john.doe-330",
+      "created_at": "2026-07-23T10:54:59.636735+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-731": {
+      "id": "alex.kumar-731",
+      "created_at": "2026-07-23T10:56:29.666644+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:18:00.396976+00:00"
+    },
+    "nina.patel-553": {
+      "id": "nina.patel-553",
+      "created_at": "2026-07-23T10:56:59.682322+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-315": {
+      "id": "alex.kumar-315",
+      "created_at": "2026-07-23T10:57:44.699394+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-590": {
+      "id": "lisa.park-590",
+      "created_at": "2026-07-23T10:58:29.715049+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-949": {
+      "id": "alex.kumar-949",
+      "created_at": "2026-07-23T10:59:29.738132+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-271": {
+      "id": "emma.davis-271",
+      "created_at": "2026-07-23T11:00:29.764743+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-125": {
+      "id": "emma.davis-125",
+      "created_at": "2026-07-23T11:00:59.787722+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-333": {
+      "id": "nina.patel-333",
+      "created_at": "2026-07-23T11:01:14.793510+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-556": {
+      "id": "nina.patel-556",
+      "created_at": "2026-07-23T11:01:44.805448+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-606": {
+      "id": "lisa.park-606",
+      "created_at": "2026-07-23T11:02:59.827260+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-544": {
+      "id": "lisa.park-544",
+      "created_at": "2026-07-23T11:03:14.833527+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-617": {
+      "id": "mike.chen-617",
+      "created_at": "2026-07-23T11:03:44.845551+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:10:30.142681+00:00"
+    },
+    "jane.smith-366": {
+      "id": "jane.smith-366",
+      "created_at": "2026-07-23T11:05:59.932636+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-515": {
+      "id": "jane.smith-515",
+      "created_at": "2026-07-23T11:07:45.030055+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-648": {
+      "id": "jane.smith-648",
+      "created_at": "2026-07-23T11:08:15.053556+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-120": {
+      "id": "mike.chen-120",
+      "created_at": "2026-07-23T11:08:30.063741+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-366": {
+      "id": "ryan.jones-366",
+      "created_at": "2026-07-23T11:10:45.152669+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:35:06.008083+00:00"
+    },
+    "ryan.jones-394": {
+      "id": "ryan.jones-394",
+      "created_at": "2026-07-23T11:11:30.188141+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-129": {
+      "id": "alex.kumar-129",
+      "created_at": "2026-07-23T11:11:45.199564+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-455": {
+      "id": "nina.patel-455",
+      "created_at": "2026-07-23T11:12:00.207572+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:35:36.033526+00:00"
+    },
+    "emma.davis-195": {
+      "id": "emma.davis-195",
+      "created_at": "2026-07-23T11:12:45.232582+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-484": {
+      "id": "emma.davis-484",
+      "created_at": "2026-07-23T11:13:45.257436+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-609": {
+      "id": "sarah.wilson-609",
+      "created_at": "2026-07-23T11:14:45.282560+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-736": {
+      "id": "sarah.wilson-736",
+      "created_at": "2026-07-23T11:16:15.331504+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-801": {
+      "id": "tom.brown-801",
+      "created_at": "2026-07-23T11:16:45.353825+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-831": {
+      "id": "mike.chen-831",
+      "created_at": "2026-07-23T11:17:45.384911+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:40:21.149093+00:00"
+    },
+    "sarah.wilson-894": {
+      "id": "sarah.wilson-894",
+      "created_at": "2026-07-23T12:32:05.914225+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-133": {
+      "id": "lisa.park-133",
+      "created_at": "2026-07-23T12:32:20.923092+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:46:06.332820+00:00"
+    },
+    "tom.brown-37": {
+      "id": "tom.brown-37",
+      "created_at": "2026-07-23T12:32:35.933229+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-187": {
+      "id": "ryan.jones-187",
+      "created_at": "2026-07-23T12:33:35.970543+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-334": {
+      "id": "tom.brown-334",
+      "created_at": "2026-07-23T12:33:50.976912+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-820": {
+      "id": "sarah.wilson-820",
+      "created_at": "2026-07-23T12:34:05.984358+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "john.doe-277": {
+      "id": "john.doe-277",
+      "created_at": "2026-07-23T12:35:51.040197+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-375": {
+      "id": "alex.kumar-375",
+      "created_at": "2026-07-23T12:36:21.049214+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-801": {
+      "id": "ryan.jones-801",
+      "created_at": "2026-07-23T12:39:06.113303+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-40": {
+      "id": "ryan.jones-40",
+      "created_at": "2026-07-23T12:40:06.137736+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-414": {
+      "id": "mike.chen-414",
+      "created_at": "2026-07-23T12:41:51.189828+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-52": {
+      "id": "tom.brown-52",
+      "created_at": "2026-07-23T12:42:06.196083+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-987": {
+      "id": "lisa.park-987",
+      "created_at": "2026-07-23T12:43:51.251161+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "nina.patel-719": {
+      "id": "nina.patel-719",
+      "created_at": "2026-07-23T12:45:51.315847+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "lisa.park-654": {
+      "id": "lisa.park-654",
+      "created_at": "2026-07-23T12:46:21.345165+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-325": {
+      "id": "emma.davis-325",
+      "created_at": "2026-07-23T12:46:51.361215+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-488": {
+      "id": "alex.kumar-488",
+      "created_at": "2026-07-23T12:47:36.377048+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-248": {
+      "id": "mike.chen-248",
+      "created_at": "2026-07-23T12:47:51.386192+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-15": {
+      "id": "mike.chen-15",
+      "created_at": "2026-07-23T12:48:21.402370+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-31": {
+      "id": "alex.kumar-31",
+      "created_at": "2026-07-23T12:48:36.413927+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "alex.kumar-388": {
+      "id": "alex.kumar-388",
+      "created_at": "2026-07-23T12:50:21.480476+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-738": {
+      "id": "emma.davis-738",
+      "created_at": "2026-07-23T12:50:51.496535+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "ryan.jones-244": {
+      "id": "ryan.jones-244",
+      "created_at": "2026-07-23T12:51:06.504722+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "sarah.wilson-661": {
+      "id": "sarah.wilson-661",
+      "created_at": "2026-07-23T12:51:36.518513+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    }
+  },
+  "lambda": {},
+  "dynamodb": {},
+  "sqs": {},
+  "sns": {},
+  "secrets": {
+    "staging/db-password": {
+      "id": "staging/db-password",
+      "created_at": "2026-07-23T12:53:07.052861+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": true
+    },
+    "prod/redis-password": {
+      "id": "prod/redis-password",
+      "created_at": "2026-07-23T12:45:06.821548+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": true
+    },
+    "prod/oauth-client-secret": {
+      "id": "prod/oauth-client-secret",
+      "created_at": "2026-07-23T10:38:00.860134+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:00:21.470807+00:00"
+    },
+    "prod/docker-registry-auth": {
+      "id": "prod/docker-registry-auth",
+      "created_at": "2026-07-23T11:05:41.604809+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:17:21.937139+00:00"
+    },
+    "dev/stripe-key": {
+      "id": "dev/stripe-key",
+      "created_at": "2026-07-23T12:38:06.514379+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:41:06.678021+00:00"
+    },
+    "prod/ssl-private-key": {
+      "id": "prod/ssl-private-key",
+      "created_at": "2026-07-23T11:04:21.563685+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T11:14:21.862011+00:00"
+    },
+    "prod/db-password": {
+      "id": "prod/db-password",
+      "created_at": "2026-07-23T12:35:46.458983+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": true
+    },
+    "prod/jwt-secret": {
+      "id": "prod/jwt-secret",
+      "created_at": "2026-07-23T12:51:06.979398+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": true
+    },
+    "prod/api-key": {
+      "id": "prod/api-key",
+      "created_at": "2026-07-23T12:48:06.912626+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": true
+    },
+    "dev/github-token": {
+      "id": "dev/github-token",
+      "created_at": "2026-07-23T11:09:01.699943+00:00",
+      "metadata": {
+        "type": "secret"
+      },
+      "active": false,
+      "deleted_at": "2026-07-23T12:37:26.501139+00:00"
+    }
+  },
+  "cost": {
+    "today": 0.030918290157748607,
+    "month": 0.030918290157748607,
+    "forecast": 0.04,
+    "by_service": {
+      "EC2": 0.028999999999999998,
+      "SecretsManager": 0.0011111111111111111,
+      "S3": 0.0007960679355263712,
+      "IAM": 1.1111111111111112e-05
+    },
+    "daily": []
+  },
+  "depts": {
+    "hr": {
+      "name": "HR",
+      "services": [
+        "s3",
+        "dynamodb",
+        "secrets"
+      ]
+    },
+    "finance": {
+      "name": "Finance",
+      "services": [
+        "s3",
+        "dynamodb",
+        "sqs",
+        "sns"
+      ]
+    },
+    "engineering": {
+      "name": "Engineering",
+      "services": [
+        "lambda",
+        "dynamodb",
+        "s3",
+        "sqs",
+        "ec2",
+        "iam"
+      ]
+    },
+    "devops": {
+      "name": "DevOps",
+      "services": [
+        "ec2",
+        "lambda",
+        "iam",
+        "s3",
+        "cloudwatch"
+      ]
+    },
+    "qa": {
+      "name": "QA",
+      "services": [
+        "lambda",
+        "dynamodb",
+        "s3"
+      ]
+    },
+    "security": {
+      "name": "Security",
+      "services": [
+        "iam",
+        "secrets",
+        "cloudtrail"
+      ]
+    },
+    "operations": {
+      "name": "Operations",
+      "services": [
+        "ec2",
+        "s3",
+        "cloudwatch",
+        "sns"
+      ]
+    },
+    "marketing": {
+      "name": "Marketing",
+      "services": [
+        "s3",
+        "sns",
+        "dynamodb"
+      ]
+    }
+  },
+  "counters": {
+    "ec2_launch": 0,
+    "s3_upload": 0,
+    "lambda_invoke": 0,
+    "iam_create": 0,
+    "dynamodb_write": 0,
+    "sqs_send": 0
+  }
+}

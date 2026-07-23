@@ -90,7 +90,7 @@ export default function CostReportHistory() {
       <div className="bg-white dark:bg-[#2a2d35] rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Report History</h3>
         {reports.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-sm">No reports generated yet. Click "Generate Now" above.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No reports generated yet. Click &quot;Generate Now&quot; above.</p>
         ) : (
           <div className="space-y-2">
             {reports.map((r) => (

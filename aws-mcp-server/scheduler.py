@@ -97,9 +97,16 @@ def _fetch_current_cost():
         use_localstack = _credentials.get("use_localstack", False)
 
         if use_localstack:
-            from mock_cost import get_mock_cost_data
-            cost_data = get_mock_cost_data()
-            return cost_data["today"], cost_data["month"], "mock"
+            import os, json
+            cost_file = os.path.join(os.path.dirname(__file__), "sim_cost_data.json")
+            if os.path.exists(cost_file):
+                try:
+                    with open(cost_file) as f:
+                        d = json.load(f)
+                    return d.get("today", 0), d.get("month", 0), "simulation"
+                except Exception:
+                    pass
+            return 0, 0, "idle"
 
         # Try cache first
         cached = _cached("cost", 3600)  # 1-hour cache for background job

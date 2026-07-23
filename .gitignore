@@ -50,8 +50,6 @@ ENV/
 Thumbs.db
 
 # project specific
-.cloned-repos/
+cloned-repos/
+logs/
 *.log
-demo.txt
-localstackissue.sh
-package-check.sh

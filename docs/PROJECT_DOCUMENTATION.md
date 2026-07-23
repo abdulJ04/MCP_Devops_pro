@@ -1190,7 +1190,7 @@ MCP_Devops_pro/
 │   ├── cleanup-demo.sh               # Demo cleanup
 │   └── lambda/                       # Lambda test functions
 │
-├── start.sh                          # One-click startup
+├── Makefile                           # One-click startup (make start)
 ├── package.json                      # Node.js dependencies
 ├── next.config.js                    # Next.js config
 ├── tailwind.config.js                # Tailwind config
@@ -1205,7 +1205,7 @@ git clone https://github.com/abdulJ04/MCP_Devops_pro.git
 cd MCP_Devops_pro
 
 # 2. Start everything
-bash start.sh
+make start
 
 # 3. Open browser
 # Frontend: http://localhost:3000
@@ -1263,10 +1263,10 @@ def list_new_service() -> str:
 
 | Variable | Location | Default | Purpose |
 |---|---|---|---|
-| `OLLAMA_URL` | `start.sh` | `http://localhost:11434` | Ollama LLM server URL |
-| `OLLAMA_MODEL` | `start.sh` | `qwen2.5:1.5b` | Ollama model name |
-| `GROQ_API_KEY` | `start.sh` | `""` | Groq API key (optional) |
-| `ANTHROPIC_API_KEY` | `start.sh` | `""` | Anthropic API key (optional) |
+| `OLLAMA_URL` | `.env.development` | `http://localhost:11434` | Ollama LLM server URL |
+| `OLLAMA_MODEL` | `.env.development` | `qwen2.5:1.5b` | Ollama model name |
+| `GROQ_API_KEY` | `.env.development` | `""` | Groq API key (optional) |
+| `ANTHROPIC_API_KEY` | `.env.development` | `""` | Anthropic API key (optional) |
 | `MCP_BACKEND_URL` | `claude-mcp-server.py` | `http://127.0.0.1:8085` | Backend URL for MCP sync |
 | `OPENCLAW_HOST` | `next.config.js` | `localhost` | OpenClaw agent host |
 | `OPENCLAW_PORT` | `next.config.js` | `18789` | OpenClaw agent port |

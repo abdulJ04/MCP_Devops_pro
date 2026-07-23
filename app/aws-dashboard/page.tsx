@@ -27,6 +27,7 @@ import {
 } from "react-icons/bs";
 import MultiModalChat from "../../components/MultiModalChat";
 import CostAlertBanner from "../../components/CostAlertBanner";
+import ServiceAlertsTab from "../../components/ServiceAlertsTab";
 import CostAlertConfig from "../../components/CostAlertConfig";
 import CostReportConfig from "../../components/CostReportConfig";
 import CostReportHistory from "../../components/CostReportHistory";
@@ -113,11 +114,13 @@ const SIDEBAR_CATEGORIES: SidebarCategory[] = [
     { id: "cost", label: "Cost Management", icon: BsGraphUp, tabs: [
       { id: "cost", label: "Cost Explorer", icon: BsGraphUp },
       { id: "budgets", label: "Budgets", icon: BsGraphUp },
-      { id: "cost_alerts", label: "Cost Alerts", icon: BsExclamationTriangle },
       { id: "cost_reports", label: "Cost Reports", icon: BsDownload },
       { id: "cost_report_config", label: "Report Settings", icon: BsGear },
       { id: "cost_report_gsheets", label: "Google Sheets", icon: BsGear },
     ]},
+  { id: "alerts", label: "Alerts", icon: BsExclamationTriangle, tabs: [
+    { id: "service_alerts", label: "Service Alerts", icon: BsExclamationTriangle },
+  ]},
   { id: "compliance", label: "Compliance", icon: BsBug, tabs: [
     { id: "cloudtrail", label: "CloudTrail", icon: BsBug },
     { id: "backup", label: "AWS Backup", icon: BsCloud },
@@ -250,7 +253,7 @@ function generateCostData() {
     { name: "us-east-1", value: 1850 },{ name: "us-west-2", value: 920 },{ name: "eu-west-1", value: 650 },
     { name: "ap-southeast-1", value: 380 },{ name: "Other", value: 210 },
   ];
-  return { daily, byService, byRegion, forecast: 0, today: 0, month: 0 };
+  return { daily, byService, byRegion, forecast: 0, today: 0, month: 0, source: "mock" as string, cost_note: "" as string };
 }
 
 function generateSecurityFindings(): SecurityFinding[] {
@@ -372,7 +375,7 @@ function AuthScreen({ onConnect }: { onConnect: (creds: AWSCredentials) => void 
     } catch (err: any) {
       const msg = err.message || "Failed to connect.";
       if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("ECONNREFUSED") || msg.includes("fetch")) {
-        setError("Backend server not running. Please run: bash start.sh");
+        setError("Backend server not running. Please run: make start");
       } else {
         setError(msg);
       }
@@ -1263,8 +1266,40 @@ function CostTab({ costData }: { costData: ReturnType<typeof generateCostData> }
   const monthCost = costData.month || costData.byService.reduce((s, c) => s + c.cost, 0);
   const forecast = costData.forecast || Math.round(monthCost * 1.08 * 100) / 100;
 
+  const source = (costData as any)?.source || "real";
+  const costNote = (costData as any)?.cost_note || "";
+  const costError = (costData as any)?.error || "";
+  const sourceLabel: Record<string, string> = { real: "", budgets: "Budget API", cloudwatch: "CloudWatch", mock: "Estimated Data" };
+
+  if (source === "error") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50">
+          <BsExclamationTriangle className="text-red-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-800 dark:text-red-200">Cost Explorer API Error</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{costNote || costError}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {source !== "real" && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
+          <BsExclamationTriangle className="text-amber-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              {source === "mock" ? "Cost Explorer API not authorized" : `Using ${sourceLabel[source] || source} data`}
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              {costNote || "Add ce:GetCostAndUsage permission to your IAM role for full cost breakdown."}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard icon={BsGraphUp} label="Today's Cost" value={`$${todayCost.toFixed(2)}`} color="blue" />
         <StatCard icon={BsGraphUp} label="This Month" value={`$${monthCost.toFixed(2)}`} color="green" />
@@ -1687,7 +1722,7 @@ export default function AWSDashboardPage() {
   const [iamPolicies, setIamPolicies] = useState<IAMPolicy[]>([]);
   const [vpcData, setVpcData] = useState<VPC[]>([]);
   const [securityGroups, setSecurityGroups] = useState<SecurityGroup[]>([]);
-  const [costDataState, setCostDataState] = useState<ReturnType<typeof generateCostData>>({ daily: [], byService: [], byRegion: [], forecast: 0, today: 0, month: 0 });
+  const [costDataState, setCostDataState] = useState<ReturnType<typeof generateCostData>>({ daily: [], byService: [], byRegion: [], forecast: 0, today: 0, month: 0, source: "mock", cost_note: "" });
   const [findings, setFindings] = useState<SecurityFinding[]>([]);
   const [trailEvents, setTrailEvents] = useState<TrailEvent[]>([]);
   const [ebsData, setEbsData] = useState<any[]>([]);
@@ -1713,6 +1748,7 @@ export default function AWSDashboardPage() {
   const [backupData, setBackupData] = useState<any>({ vaults: [], plans: [], jobs: [] });
   const [budgetsData, setBudgetsData] = useState<any>({ budgets: [] });
   const [clientActivity, setClientActivity] = useState<{ action: string; resource: string; time: string; type: "success" | "warning" | "error" | "info" }[]>([]);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const prevSnapshotRef = useRef<{ ec2Ids: string[]; s3Names: string[]; iamNames: string[]; lambdaNames: string[] }>({ ec2Ids: [], s3Names: [], iamNames: [], lambdaNames: [] });
 
   const fetchAWS = useCallback(async (action: string, extraBody?: Record<string, any>) => {
@@ -1726,6 +1762,10 @@ export default function AWSDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (res.status === 401) {
+        setSessionExpired(true);
+        return null;
+      }
       if (!res.ok) return null;
       const data = await res.json();
       return data;
@@ -1739,21 +1779,42 @@ export default function AWSDashboardPage() {
       await fetchAWS("refresh");
       
       // Batch 1: Core services (most important - load first)
-      const [ec2Res, s3Res, lambdaRes, rdsRes, iamRes, vpcRes, costRes, securityRes, activityRes] = await Promise.all([
+      const [ec2Res, s3Res, lambdaRes, rdsRes, iamRes, vpcRes, securityRes, activityRes] = await Promise.all([
         fetchAWS("ec2"), fetchAWS("s3"), fetchAWS("lambda"), fetchAWS("rds"),
-        fetchAWS("iam"), fetchAWS("vpc"), fetchAWS("cost"), fetchAWS("security"), fetchAWS("activity"),
+        fetchAWS("iam"), fetchAWS("vpc"), fetchAWS("security"), fetchAWS("activity"),
       ]);
 
-      // Batch 2: Secondary services (load after core)
-      const [ebsRes, route53Res, elbRes, asgRes, cwRes, ssmRes, ecrRes, ecsRes, eksRes, cfnRes,
-        cpRes, cbRes, cdRes, smRes, psRes, acmRes, ddbRes, snsRes, sqsRes, ebRes, bkRes, budRes
-      ] = await Promise.all([
-        fetchAWS("ebs"), fetchAWS("route53"), fetchAWS("elb"), fetchAWS("auto_scaling"),
-        fetchAWS("cloudwatch_dash"), fetchAWS("ssm"), fetchAWS("ecr"), fetchAWS("ecs"), fetchAWS("eks"),
-        fetchAWS("cloudformation"), fetchAWS("codepipeline"), fetchAWS("codebuild"), fetchAWS("codedeploy"),
-        fetchAWS("secrets_manager"), fetchAWS("parameter_store"), fetchAWS("acm"), fetchAWS("dynamodb"),
-        fetchAWS("sns"), fetchAWS("sqs"), fetchAWS("eventbridge"), fetchAWS("backup"), fetchAWS("budgets"),
-      ]);
+      // Cost loads async (can be slow with CE fallback chain)
+      fetchAWS("cost").then(costRes => {
+        if (costRes) setCostDataState({ daily: costRes.daily || [], byService: costRes.byService || costRes.by_service || [], byRegion: costRes.byRegion || costRes.by_region || [], forecast: costRes.forecast || 0, today: costRes.today || 0, month: costRes.month || 0, source: costRes.source || "real", cost_note: costRes.cost_note || "" });
+      }).catch(() => {});
+
+      // Batch 2: Secondary services (non-blocking — each updates independently)
+      const fetchSecondary = (action: string, setter: (data: any) => void) => {
+        fetchAWS(action).then(res => { if (res) setter(res); }).catch(() => {});
+      };
+      fetchSecondary("ebs", setEbsData);
+      fetchSecondary("route53", setRoute53Data);
+      fetchSecondary("elb", setElbData);
+      fetchSecondary("auto_scaling", setAutoScalingData);
+      fetchSecondary("cloudwatch_dash", setCwDashData);
+      fetchSecondary("ssm", setSsmData);
+      fetchSecondary("ecr", setEcrData);
+      fetchSecondary("ecs", setEcsData);
+      fetchSecondary("eks", setEksData);
+      fetchSecondary("cloudformation", setCfnData);
+      fetchSecondary("codepipeline", setCodepipelineData);
+      fetchSecondary("codebuild", setCodebuildData);
+      fetchSecondary("codedeploy", setCodedeployData);
+      fetchSecondary("secrets_manager", setSecretsData);
+      fetchSecondary("parameter_store", setParamsData);
+      fetchSecondary("acm", setAcmData);
+      fetchSecondary("dynamodb", setDynamoData);
+      fetchSecondary("sns", setSnsData);
+      fetchSecondary("sqs", setSqsData);
+      fetchSecondary("eventbridge", setEbData);
+      fetchSecondary("backup", setBackupData);
+      fetchSecondary("budgets", setBudgetsData);
 
       if (ec2Res?.instances) {
         const mapped = ec2Res.instances.map((inst: any) => ({
@@ -1856,31 +1917,8 @@ export default function AWSDashboardPage() {
         }));
         setSecurityGroups(mapped);
       }
-      if (costRes) setCostDataState({ daily: costRes.daily || [], byService: costRes.byService || costRes.by_service || [], byRegion: costRes.byRegion || costRes.by_region || [], forecast: costRes.forecast || 0, today: costRes.today || 0, month: costRes.month || 0 });
       if (securityRes?.findings) setFindings(securityRes.findings);
       if (activityRes?.events) setTrailEvents(activityRes.events);
-      if (ebsRes?.volumes) setEbsData(ebsRes.volumes);
-      if (route53Res) setRoute53Data(route53Res);
-      if (elbRes) setElbData(elbRes);
-      if (asgRes) setAutoScalingData(asgRes);
-      if (cwRes) setCwDashData(cwRes);
-      if (ssmRes) setSsmData(ssmRes);
-      if (ecrRes) setEcrData(ecrRes);
-      if (ecsRes) setEcsData(ecsRes);
-      if (eksRes) setEksData(eksRes);
-      if (cfnRes) setCfnData(cfnRes);
-      if (cpRes) setCodepipelineData(cpRes);
-      if (cbRes) setCodebuildData(cbRes);
-      if (cdRes) setCodedeployData(cdRes);
-      if (smRes) setSecretsData(smRes);
-      if (psRes) setParamsData(psRes);
-      if (acmRes) setAcmData(acmRes);
-      if (ddbRes) setDynamoData(ddbRes);
-      if (snsRes) setSnsData(snsRes);
-      if (sqsRes) setSqsData(sqsRes);
-      if (ebRes) setEbData(ebRes);
-      if (bkRes) setBackupData(bkRes);
-      if (budRes) setBudgetsData(budRes);
 
       const newActivities: typeof clientActivity = [];
       const now = new Date();
@@ -2005,6 +2043,23 @@ export default function AWSDashboardPage() {
   }, [connected, credentials?.sessionTimeout, fetchAWS]);
 
   if (!hydrated) return <div className="h-full bg-[#f0f0f5] dark:bg-[#1e2128] flex items-center justify-center"><Spinner size="lg" /></div>;
+  if (sessionExpired) {
+    return (
+      <div className="h-full bg-[#f0f0f5] dark:bg-[#1e2128] flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-[#2a2d35] rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <BsExclamationTriangle className="text-amber-500" size={32} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Session Expired</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">Your AWS session has expired. Please reconnect with your credentials.</p>
+          <button onClick={() => { setSessionExpired(false); handleDisconnect(); }}
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors">
+            Reconnect to AWS
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (!connected) return <AuthScreen onConnect={handleConnect} />;
 
   const renderTab = () => {
@@ -2039,6 +2094,7 @@ export default function AWSDashboardPage() {
       case "backup": return <BackupTab data={backupData} />;
       case "cost": return <CostTab costData={costDataState} />;
       case "cost_alerts": return <CostAlertConfig credentials={credentials} />;
+      case "service_alerts": return <ServiceAlertsTab />;
       case "cost_reports": return <CostReportHistory />;
       case "cost_report_config": return <CostReportConfig />;
       case "cost_report_gsheets": return <CostReportGoogleSheets />;

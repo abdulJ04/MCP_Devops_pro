@@ -102,7 +102,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: 'Python backend not running on port 8085. Run: bash start.sh',
+          error: 'Python backend not running on port 8085. Run: make start',
         },
         { status: 502, headers: CORS_HEADERS }
       );

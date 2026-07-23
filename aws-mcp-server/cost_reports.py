@@ -34,8 +34,16 @@ def generate_report_data(report_type: str = "daily") -> dict:
     use_localstack = _credentials.get("use_localstack", False)
 
     if use_localstack:
-        from mock_cost import get_mock_cost_data
-        cost_data = get_mock_cost_data()
+        import os, json
+        cost_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "aws-mcp-server", "sim_cost_data.json")
+        if os.path.exists(cost_file):
+            try:
+                with open(cost_file) as f:
+                    cost_data = json.load(f)
+            except Exception:
+                cost_data = {"today": 0, "month": 0, "daily": [], "byService": [], "byRegion": []}
+        else:
+            cost_data = {"today": 0, "month": 0, "daily": [], "byService": [], "byRegion": []}
     else:
         cost_data = _fetch_real_cost_data()
 
@@ -401,7 +409,8 @@ async def get_report_config_endpoint():
 
 
 @router.post("/cost/report/config")
-async def save_report_config(request: dict = {}):
+async def save_report_config(request: dict = None):
+    request = request or {}
     """Save report configuration."""
     update_fields = {}
     for field in [
@@ -428,7 +437,8 @@ async def save_report_config(request: dict = {}):
 
 
 @router.post("/cost/report/generate")
-async def generate_report(request: dict = {}):
+async def generate_report(request: dict = None):
+    request = request or {}
     """Generate a cost report on demand."""
     report_type = request.get("report_type", "daily")
     report_data = generate_report_data(report_type)
@@ -487,7 +497,8 @@ async def generate_report(request: dict = {}):
 
 
 @router.post("/cost/report/send-email")
-async def send_report_email_endpoint(request: dict = {}):
+async def send_report_email_endpoint(request: dict = None):
+    request = request or {}
     """Generate report and send via email."""
     report_type = request.get("report_type", "daily")
     report_data = generate_report_data(report_type)
@@ -535,7 +546,8 @@ async def get_report_history_endpoint(report_type: str = None, limit: int = 50):
 
 
 @router.post("/cost/report/preview")
-async def preview_report(request: dict = {}):
+async def preview_report(request: dict = None):
+    request = request or {}
     """Generate report and return HTML preview."""
     report_type = request.get("report_type", "daily")
     report_data = generate_report_data(report_type)
@@ -544,7 +556,8 @@ async def preview_report(request: dict = {}):
 
 
 @router.post("/cost/report/google-sheets/test")
-async def test_google_sheets(request: dict = {}):
+async def test_google_sheets(request: dict = None):
+    request = request or {}
     """Test Apps Script connection."""
     apps_script_url = request.get("apps_script_url", "")
     if not apps_script_url:
@@ -558,7 +571,8 @@ async def test_google_sheets(request: dict = {}):
 
 
 @router.post("/cost/report/google-sheets/push")
-async def push_to_google_sheets(request: dict = {}):
+async def push_to_google_sheets(request: dict = None):
+    request = request or {}
     """Push report data to Google Sheet via Apps Script URL.
 
     Optional params:
