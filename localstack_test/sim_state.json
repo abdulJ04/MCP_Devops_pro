@@ -438,7 +438,7 @@
       "metadata": {
         "name": "prod-app-02",
         "type": "m5.large",
-        "state": "running"
+        "state": "stopped"
       },
       "active": true
     },
@@ -759,6 +759,36 @@
       "metadata": {
         "name": "build-server-01",
         "type": "t3.small",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-8b0fb2a71169e6ffa": {
+      "id": "i-8b0fb2a71169e6ffa",
+      "created_at": "2026-07-23T12:53:27.119475+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "t3.medium",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-f4a51acb7d9178844": {
+      "id": "i-f4a51acb7d9178844",
+      "created_at": "2026-07-24T06:35:46.572280+00:00",
+      "metadata": {
+        "name": "staging-app-01",
+        "type": "t2.micro",
+        "state": "running"
+      },
+      "active": true
+    },
+    "i-9bfa65aad34166349": {
+      "id": "i-9bfa65aad34166349",
+      "created_at": "2026-07-24T06:37:25.158929+00:00",
+      "metadata": {
+        "name": "prod-api-01",
+        "type": "t2.micro",
         "state": "running"
       },
       "active": true
@@ -1764,6 +1794,60 @@
         "active": true
       },
       "active": true
+    },
+    "nina.patel-140": {
+      "id": "nina.patel-140",
+      "created_at": "2026-07-23T12:53:36.725687+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "emma.davis-31": {
+      "id": "emma.davis-31",
+      "created_at": "2026-07-24T06:35:09.515403+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "tom.brown-350": {
+      "id": "tom.brown-350",
+      "created_at": "2026-07-24T06:35:54.579624+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "jane.smith-119": {
+      "id": "jane.smith-119",
+      "created_at": "2026-07-24T06:36:09.613456+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-667": {
+      "id": "mike.chen-667",
+      "created_at": "2026-07-24T06:36:39.636302+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
+    },
+    "mike.chen-165": {
+      "id": "mike.chen-165",
+      "created_at": "2026-07-24T06:36:54.665027+00:00",
+      "metadata": {
+        "type": "user",
+        "active": true
+      },
+      "active": true
     }
   },
   "lambda": {},
@@ -1785,7 +1869,8 @@
       "metadata": {
         "type": "secret"
       },
-      "active": true
+      "active": false,
+      "deleted_at": "2026-07-24T06:36:46.038797+00:00"
     },
     "prod/oauth-client-secret": {
       "id": "prod/oauth-client-secret",
@@ -1807,12 +1892,12 @@
     },
     "dev/stripe-key": {
       "id": "dev/stripe-key",
-      "created_at": "2026-07-23T12:38:06.514379+00:00",
+      "created_at": "2026-07-23T12:54:27.100862+00:00",
       "metadata": {
         "type": "secret"
       },
       "active": false,
-      "deleted_at": "2026-07-23T12:41:06.678021+00:00"
+      "deleted_at": "2026-07-24T06:35:26.006706+00:00"
     },
     "prod/ssl-private-key": {
       "id": "prod/ssl-private-key",
@@ -1837,7 +1922,8 @@
       "metadata": {
         "type": "secret"
       },
-      "active": true
+      "active": false,
+      "deleted_at": "2026-07-24T06:37:06.047666+00:00"
     },
     "prod/api-key": {
       "id": "prod/api-key",
@@ -1949,5 +2035,7 @@
     "iam_create": 0,
     "dynamodb_write": 0,
     "sqs_send": 0
-  }
+  },
+  "s3_upload": 7,
+  "ec2_launch": 2
 }

@@ -1,8 +1,8 @@
 {
-  "today": 50.86,
+  "today": 60.6,
   "yesterday": 45.0,
-  "month": 5.86,
-  "forecast": 7.64,
+  "month": 15.6,
+  "forecast": 19.5,
   "daily": [
     {
       "date": "",
@@ -134,43 +134,43 @@
   "byService": [
     {
       "service": "S3",
-      "cost": 4.4
+      "cost": 12.65
     },
     {
       "service": "EC2",
-      "cost": 0.7
+      "cost": 1.4
     },
     {
       "service": "SecretsManager",
-      "cost": 0.6
+      "cost": 1.05
     },
     {
       "service": "Lambda",
-      "cost": 0.12
+      "cost": 0.36
     },
     {
       "service": "IAM",
-      "cost": 0.04
+      "cost": 0.14
     }
   ],
   "byRegion": [
     {
       "name": "us-east-1",
-      "value": 3.81
+      "value": 10.14
     },
     {
       "name": "eu-west-1",
-      "value": 1.17
+      "value": 3.12
     },
     {
       "name": "ap-southeast-1",
-      "value": 0.59
+      "value": 1.56
     },
     {
       "name": "us-west-2",
-      "value": 0.29
+      "value": 0.78
     }
   ],
   "source": "simulation",
-  "last_updated": "2026-07-23T11:03:26.482763+00:00"
+  "last_updated": "2026-07-24T06:37:36.532458+00:00"
 }
